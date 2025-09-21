@@ -1,12 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-
-// This is a placeholder for the User object that will be fetched from the backend
-interface User {
-  id: string;
-  name: string;
-  email: string;
-}
+import type { User } from '@/types';
 
 interface AuthState {
   user: User | null;
@@ -22,26 +16,15 @@ const initialState: AuthState = {
   error: null,
 };
 
+import { authApi } from '@/api/auth';
+
 // Async thunk for user registration
 export const registerUser = createAsyncThunk(
   'auth/registerUser',
   async (userData: any, { rejectWithValue }) => {
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        return rejectWithValue(errorData.message || 'Registration failed');
-      }
-
-      const data = await response.json();
-      return data;
+      const user = await authApi.register(userData);
+      return user;
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -53,21 +36,8 @@ export const loginUser = createAsyncThunk(
   'auth/loginUser',
   async (credentials: any, { rejectWithValue }) => {
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(credentials),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        return rejectWithValue(errorData.message || 'Login failed');
-      }
-
-      const data = await response.json();
-      return data;
+      const user = await authApi.login(credentials);
+      return user;
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
