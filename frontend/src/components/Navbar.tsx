@@ -9,9 +9,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import { useSelector, useDispatch } from "react-redux";
+import type { RootState, AppDispatch } from "@/app/store";
+import { logout } from "@/app/features/auth/authSlice";
 
 export function Navbar() {
-  const isAuthenticated = false; // Placeholder for authentication status
+  const dispatch: AppDispatch = useDispatch();
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+
+  const handleLogout = () => {
+    dispatch(logout());
+  };
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -54,23 +62,27 @@ export function Navbar() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuLabel>{user?.name || 'My Account'}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem>Profile</DropdownMenuItem>
                   <DropdownMenuItem>Orders</DropdownMenuItem>
                   <DropdownMenuItem>Settings</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>Logout</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <div className="flex space-x-2">
-                <Button variant="ghost" size="sm">
-                  Login
-                </Button>
-                <Button size="sm">
-                  Register
-                </Button>
+                <a href="/login">
+                  <Button variant="ghost" size="sm">
+                    Login
+                  </Button>
+                </a>
+                <a href="/register">
+                  <Button size="sm">
+                    Register
+                  </Button>
+                </a>
               </div>
             )}
           </div>
