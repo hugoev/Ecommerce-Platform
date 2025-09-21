@@ -8,5 +8,4 @@ services:
     ports: ["5432:5432"]
     tmpfs:
       - /var/lib/postgresql/data   # ephemeral DB
-    volumes:
-      - ./db/init:/docker-entrypoint-initdb.d
+
