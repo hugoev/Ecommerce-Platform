@@ -43,35 +43,35 @@ export function ProductsPage() {
   });
 
   return (
-    <div className="container py-8 px-4 max-w-7xl mx-auto">
+    <div className="container py-6 px-4 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold mb-4">Products</h1>
-        <p className="text-text-muted">Discover our collection of quality products</p>
+      <div className="text-center mb-6">
+        <h1 className="text-3xl font-bold mb-2">Products</h1>
+        <p className="text-sm text-text-muted">Discover our collection</p>
       </div>
 
       {/* Search and Filters */}
-      <div className="mb-8 space-y-4 max-w-md mx-auto">
+      <div className="mb-6 space-y-3 max-w-md mx-auto">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-muted h-4 w-4" />
           <Input
             type="text"
-            placeholder="Search products..."
+            placeholder="Search..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 h-9"
           />
         </div>
         <div className="flex justify-center">
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Sort by" />
+            <SelectTrigger className="w-40 h-9">
+              <SelectValue placeholder="Sort" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="name-asc">Name: A-Z</SelectItem>
-              <SelectItem value="name-desc">Name: Z-A</SelectItem>
-              <SelectItem value="price-asc">Price: Low to High</SelectItem>
-              <SelectItem value="price-desc">Price: High to Low</SelectItem>
+              <SelectItem value="name-asc">Name A-Z</SelectItem>
+              <SelectItem value="name-desc">Name Z-A</SelectItem>
+              <SelectItem value="price-asc">Price Low-High</SelectItem>
+              <SelectItem value="price-desc">Price High-Low</SelectItem>
               <SelectItem value="availability">Availability</SelectItem>
             </SelectContent>
           </Select>
@@ -79,36 +79,33 @@ export function ProductsPage() {
       </div>
 
       {/* Product Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8 justify-items-center">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 justify-items-center">
         {filteredProducts.map((product) => (
-          <Card key={product.id} className="group hover:shadow-lg transition-shadow duration-200">
+          <Card key={product.id} className="group hover:shadow-md transition-shadow duration-200">
             <CardHeader className="p-0">
-              <div className="aspect-square bg-muted rounded-t-lg overflow-hidden">
+              <div className="aspect-square bg-muted rounded-lg overflow-hidden">
                 <img
-                  src={`https://via.placeholder.com/300x300?text=${product.name.replace(/\s+/g, '+')}`}
+                  src={`https://via.placeholder.com/250x250?text=${product.name.replace(/\s+/g, '+')}`}
                   alt={product.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                 />
               </div>
             </CardHeader>
-            <CardContent className="p-4">
-              <h3 className="font-semibold text-lg mb-2">{product.name}</h3>
-              <p className="text-sm text-text-muted mb-3 line-clamp-2">
+            <CardContent className="p-3">
+              <h3 className="font-medium text-base mb-1">{product.name}</h3>
+              <p className="text-xs text-text-muted mb-2 line-clamp-2">
                 {product.description}
               </p>
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-xl font-bold text-primary">${product.price}</span>
-                <span className="text-sm text-text-muted">
-                  {product.quantity > 10 ? `${product.quantity} available` : `Only ${product.quantity} left`}
-                </span>
+              <div className="mb-2">
+                <span className="text-lg font-bold text-primary">${product.price}</span>
               </div>
               <Button
                 className="w-full"
                 disabled={product.quantity === 0}
                 size="sm"
               >
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                {product.quantity === 0 ? 'Out of Stock' : 'Add to Cart'}
+                <ShoppingCart className="h-3 w-3 mr-1" />
+                {product.quantity === 0 ? 'Out' : 'Add'}
               </Button>
             </CardContent>
           </Card>
@@ -118,12 +115,7 @@ export function ProductsPage() {
       {/* Load More */}
       <div className="text-center">
         {filteredProducts.length < allProducts.length && (
-          <Button variant="outline">Load More Products</Button>
-        )}
-        {filteredProducts.length > 0 && (
-          <p className="text-sm text-muted-foreground mt-4">
-            Showing {filteredProducts.length} of {allProducts.length} products
-          </p>
+          <Button variant="outline" size="sm">More</Button>
         )}
       </div>
     </div>
