@@ -1,10 +1,37 @@
 package com.group7.ecommerce.springbackend.item;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "items")
 public class Item {
+
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotBlank
+    @Column(nullable = false)
+    private String title;
+
+    @Column(columnDefinition = "text")
+    private String description;
+
+    @NotNull
+    @DecimalMin(value = "0.00")
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal price;
+
+    @NotNull @Min(0)
+    @Column(name = "quantity_available", nullable = false)
+    private Integer quantityAvailable;
+
     public Long getId() {
         return id;
     }
@@ -21,21 +48,36 @@ public class Item {
         this.title = title;
     }
 
-    public Integer getPrice() {
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public BigDecimal getPrice() {
         return price;
     }
 
-    public void setPrice(Integer price) {
+    public void setPrice(BigDecimal price) {
         this.price = price;
     }
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    public Integer getQuantityAvailable() {
+        return quantityAvailable;
+    }
 
-    @Column(nullable = false)
-    private String title;
+    public void setQuantityAvailable(Integer quantityAvailable) {
+        this.quantityAvailable = quantityAvailable;
+    }
 
-    @Column(nullable = false)
-    private Integer price;
+    protected Item() {}
+
+    public Item(String title, String description, BigDecimal price, Integer quantityAvailable) {
+        this.title = title;
+        this.description = description;
+        this.price = price;
+        this.quantityAvailable = quantityAvailable;
+    }
 }
