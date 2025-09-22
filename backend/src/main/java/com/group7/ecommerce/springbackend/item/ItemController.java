@@ -1,12 +1,11 @@
 package com.group7.ecommerce.springbackend.item;
 
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 
 @RestController
@@ -33,9 +32,32 @@ public class ItemController {
         return service.getAll(search, pageable);
     }
 
+    @GetMapping("/{id}")
+    public Item getById(@PathVariable Long id) {
+        return service.getById(id);
+    }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id) {
+        service.delete(id);
+    }
+
     @PostMapping
-    public Item createItem(@RequestBody Item item) {
+    public Item createItem(@RequestBody @Valid Item item) {
         return service.add(item);
     }
+
+    @PutMapping("/{id}")
+    public Item replace(@PathVariable Long id, @RequestBody @Valid Item body) {
+        return service.replace(id, body);
+    }
+
+    @PatchMapping("/{id}")
+    public Item update(@PathVariable Long id, @RequestBody Item updates) {
+        return service.update(id, updates);
+    }
+
+
+
 }
 
