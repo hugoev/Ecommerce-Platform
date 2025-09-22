@@ -369,7 +369,7 @@ export function AdminDashboard() {
                   <Label htmlFor="product-category">Category</Label>
                   <Select
                     value={productForm.category}
-                    onValueChange={(value) => setProductForm({...productForm, category: value})}
+                    onVolumeChange={(value) => setProductForm({...productForm, category: value})}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />

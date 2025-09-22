@@ -76,7 +76,7 @@ export function CartPage() {
                     <div className="flex items-center space-x-2">
                       <Button
                         variant="outline"
-                        size="icon"
+                        size="sm"
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
                         className="h-8 w-8"
                       >
@@ -85,7 +85,7 @@ export function CartPage() {
                       <span className="w-8 text-center">{item.quantity}</span>
                       <Button
                         variant="outline"
-                        size="icon"
+                        size="sm"
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
                         className="h-8 w-8"
                       >
@@ -94,7 +94,7 @@ export function CartPage() {
                     </div>
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="sm"
                       onClick={() => removeItem(item.id)}
                       className="text-destructive hover:text-destructive"
                     >

@@ -1,10 +1,10 @@
 package com.group7.ecommerce.springbackend.item;
 
+import java.util.NoSuchElementException;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import java.util.NoSuchElementException;
-
 
 @Service
 public class ItemService {
@@ -15,7 +15,8 @@ public class ItemService {
     }
 
     public Page<Item> getAll(String q, Pageable pageable) {
-        if (q == null || q.isBlank()) return repo.findAll(pageable);
+        if (q == null || q.isBlank())
+            return repo.findAll(pageable);
         return repo.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(q, q, pageable);
     }
 
@@ -45,18 +46,31 @@ public class ItemService {
         existing.setDescription(body.getDescription());
         existing.setPrice(body.getPrice());
         existing.setQuantityAvailable(body.getQuantityAvailable());
+        existing.setImageUrl(body.getImageUrl());
+        existing.setCategory(body.getCategory());
+        if (body.getSku() != null)
+            existing.setSku(body.getSku());
 
         return repo.save(existing);
     }
 
     public Item update(Long id, Item updates) {
         Item existing = getById(id);
-        if (updates.getTitle() != null) existing.setTitle(updates.getTitle());
-        if (updates.getDescription() != null) existing.setDescription(updates.getDescription());
-        if (updates.getPrice() != null) existing.setPrice(updates.getPrice());
-        if (updates.getQuantityAvailable() != null) existing.setQuantityAvailable(updates.getQuantityAvailable());
+        if (updates.getTitle() != null)
+            existing.setTitle(updates.getTitle());
+        if (updates.getDescription() != null)
+            existing.setDescription(updates.getDescription());
+        if (updates.getPrice() != null)
+            existing.setPrice(updates.getPrice());
+        if (updates.getQuantityAvailable() != null)
+            existing.setQuantityAvailable(updates.getQuantityAvailable());
+        if (updates.getImageUrl() != null)
+            existing.setImageUrl(updates.getImageUrl());
+        if (updates.getCategory() != null)
+            existing.setCategory(updates.getCategory());
+        if (updates.getSku() != null)
+            existing.setSku(updates.getSku());
         return repo.save(existing);
     }
-
 
 }

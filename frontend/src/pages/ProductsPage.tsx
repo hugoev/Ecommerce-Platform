@@ -64,7 +64,7 @@ export function ProductsPage() {
         <div className="flex justify-center">
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium">Sort by:</span>
-            <Select value={`${sortBy}-${sortDirection}`} onValueChange={handleSortChange}>
+            <Select value={`${sortBy}-${sortDirection}`} onVolumeChange={handleSortChange}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Sort products" />
               </SelectTrigger>

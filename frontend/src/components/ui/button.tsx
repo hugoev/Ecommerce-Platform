@@ -20,12 +20,6 @@ export function Button({
     ghost: "hover:bg-accent hover:text-foreground text-foreground hover:shadow-md"
   };
 
-  // Ensure button text is always readable
-  const textColors = {
-    default: "text-white",
-    outline: "text-foreground",
-    ghost: "text-foreground"
-  };
 
   const sizes = {
     sm: "h-8 px-3 text-sm",

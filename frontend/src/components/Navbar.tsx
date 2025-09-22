@@ -44,7 +44,7 @@ const Navbar = () => {
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 >
                   <User className="h-4 w-4" />
-                  <span className="ml-2">{user?.name || 'User'}</span>
+                  <span className="ml-2">{user.username || 'User'}</span>
                   <ChevronDown className="h-3 w-3 ml-1" />
                 </Button>
                 {isDropdownOpen && (

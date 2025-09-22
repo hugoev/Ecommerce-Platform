@@ -1,11 +1,54 @@
-services:
-  postgres:
-    image: postgres:17
-    environment:
-      POSTGRES_USER: shop
-      POSTGRES_PASSWORD: shop
-      POSTGRES_DB: shop
-    ports: ["5432:5432"]
-    tmpfs:
-      - /var/lib/postgresql/data   # ephemeral DB
+version: '3.8'
 
+services:
+  # 1. PostgreSQL Database Service
+  db:
+    image: postgres:15-alpine
+    container_name: ecommerce-db
+    # Persist data even if the container is removed
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    # Environment variables are loaded from the .env file
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432" # Expose port for local debugging if needed
+    restart: unless-stopped
+
+  # 2. Spring Boot Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ecommerce-backend
+    depends_on:
+      - db # Ensures the database is started before the backend
+    ports:
+      - "8080:8080"
+    environment:
+      # Connection string points to the 'db' service name
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate # Flyway handles migrations
+      JWT_SECRET: ${JWT_SECRET:-default-super-secret-key-for-dev}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400} # 24 hours
+    restart: unless-stopped
+
+  # 3. React Frontend Service (served by Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ecommerce-frontend
+    ports:
+      - "5173:80" # Map host port 5173 to container port 80
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  # Named volume for database persistence
+  db-data:

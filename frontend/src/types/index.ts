@@ -1,16 +1,29 @@
-export interface User {
-  id: string;
+export interface Item {
+  id: number;
   name: string;
+  description: string;
+  price: number;
+  quantityAvailable: number;
+  imageUrl?: string;
+  category?: string; // Note: This is a frontend-only concept for now
+}
+
+export interface User {
+  id: number;
+  username: string;
   email: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'ROLE_USER' | 'ROLE_ADMIN';
 }
 
 export interface RegisterData {
-  name: string;
+  username: string;
   email: string;
-  password?: string;
+  password: string;
 }
 
 export interface LoginCredentials {
-  email: string;
-  password?: string;
+  username: string;
+  password: string;
 }

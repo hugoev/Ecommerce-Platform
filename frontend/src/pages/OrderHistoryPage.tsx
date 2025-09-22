@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Package, Calendar, DollarSign, User, ArrowUpDown } from "lucide-react";
+import { Package, Calendar, DollarSign, User } from "lucide-react";
 import { useState } from "react";
 
 export function OrderHistoryPage() {
@@ -85,7 +85,7 @@ export function OrderHistoryPage() {
       <div className="mb-6 flex justify-end">
         <div className="flex items-center space-x-2">
           <span className="text-sm font-medium">Sort by:</span>
-          <Select value={sortBy} onValueChange={setSortBy}>
+          <Select value={sortBy} onVolumeChange={setSortBy}>
             <SelectTrigger className="w-48">
               <SelectValue />
             </SelectTrigger>
