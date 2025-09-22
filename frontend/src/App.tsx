@@ -1,46 +1,27 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { Layout } from "./components/Layout";
-import { HomePage } from "./pages/HomePage";
-import { ProductsPage } from "./pages/ProductsPage";
-import { AboutPage } from "./pages/AboutPage";
-import { ContactPage } from "./pages/ContactPage";
-import { LoginPage } from "./pages/LoginPage";
-import { RegisterPage } from "./pages/RegisterPage";
-
-const router = createBrowserRouter([
-  {
-    element: <Layout />,
-    children: [
-      {
-        path: "/",
-        element: <HomePage />,
-      },
-      {
-        path: "/products",
-        element: <ProductsPage />,
-      },
-      {
-        path: "/about",
-        element: <AboutPage />,
-      },
-      {
-        path: "/contact",
-        element: <ContactPage />,
-      },
-      {
-        path: "/login",
-        element: <LoginPage />,
-      },
-      {
-        path: "/register",
-        element: <RegisterPage />,
-      },
-    ],
-  },
-]);
+import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { Layout } from './components/Layout';
+import { AdminDashboard } from './pages/AdminDashboard';
+import { CartPage } from './pages/CartPage';
+import { HomePage } from './pages/HomePage';
+import { LoginPage } from './pages/LoginPage';
+import { ProductsPage } from './pages/ProductsPage';
+import { RegisterPage } from './pages/RegisterPage';
 
 function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<HomePage />} />
+          <Route path="products" element={<ProductsPage />} />
+          <Route path="cart" element={<CartPage />} />
+          <Route path="admin" element={<AdminDashboard />} />
+          <Route path="login" element={<LoginPage />} />
+          <Route path="register" element={<RegisterPage />} />
+        </Route>
+      </Routes>
+    </Router>
+  );
 }
 
 export default App;

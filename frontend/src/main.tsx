@@ -1,9 +1,10 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App.tsx'
-import './index.css'
 import { Provider } from 'react-redux'
+import App from './App.tsx'
 import { store } from './app/store.ts'
+import { ThemeProvider } from './components/theme-provider'
+import './index.css'
 
 async function main() {
   // Start the mock server in development
@@ -16,9 +17,11 @@ async function main() {
 
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
-      <Provider store={store}>
-        <App />
-      </Provider>
+      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+        <Provider store={store}>
+          <App />
+        </Provider>
+      </ThemeProvider>
     </React.StrictMode>,
   )
 }

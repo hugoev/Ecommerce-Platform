@@ -1,1 +1,187 @@
 @import "tailwindcss";
+
+:root {
+  /* Easy on the eyes - warm, natural colors */
+  --color-background: #f9f7f5;  /* Warm cream */
+  --color-foreground: #2d3748;  /* Dark slate gray */
+  --color-primary: #4a5568;     /* Medium slate */
+  --color-secondary: #e2e8f0;   /* Light gray */
+  --color-muted: #f1f5f9;       /* Very light gray */
+  --color-accent: #cbd5e0;      /* Light blue-gray */
+  --color-border: #f1f5f9;      /* Very light border - barely visible */
+  --color-destructive: #e53e3e; /* Soft red */
+
+  /* Semantic colors */
+  --color-text: var(--color-foreground);
+  --color-text-muted: #718096;  /* Medium gray */
+  --color-text-accent: var(--color-primary);
+
+  /* Interactive states - subtle and comfortable */
+  --color-hover: #f7fafc;       /* Very light hover */
+  --color-focus: var(--color-primary);
+
+  /* Border radius - consistent */
+  --radius-sm: 0.25rem;
+  --radius: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Shadows - simple scale */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+/* Base typography and layout */
+html, body, #root {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  min-height: 100vh;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/*
+ * =================================
+ * EASY-ON-THE-EYES COLOR SYSTEM
+ * =================================
+ *
+ * WARM, NATURAL & COMFORTABLE COLOR PALETTE:
+ *
+ * 1. Base Colors (8 colors total):
+ *    --color-background: #f9f7f5  (Warm cream - easy on eyes)
+ *    --color-foreground: #2d3748  (Dark slate gray - readable)
+ *    --color-primary: #4a5568     (Medium slate - professional)
+ *    --color-secondary: #e2e8f0   (Light gray - subtle)
+ *    --color-muted: #f1f5f9       (Very light gray - cards)
+ *    --color-accent: #cbd5e0      (Light blue-gray - hovers)
+ *    --color-border: #f1f5f9      (Very light border - barely visible)
+ *    --color-destructive: #e53e3e (Soft red - not aggressive)
+ *
+ * 2. Semantic Colors:
+ *    --color-text: #2d3748        (Main text - readable)
+ *    --color-text-muted: #718096  (Secondary text - subtle)
+ *    --color-text-accent: #4a5568 (Accent text - professional)
+ *    --color-hover: #f7fafc       (Very light hover - gentle)
+ *    --color-focus: #4a5568       (Focus - consistent)
+ *
+ * 3. Design Philosophy:
+ *    - High contrast for readability
+ *    - Warm, natural tones
+ *    - Subtle interactions
+ *    - Professional appearance
+ *    - Easy on the eyes for long reading
+ *
+ * To change colors: Simply update the CSS variables above!
+ * No need to hunt through multiple files.
+ */
+
+/* Base styles */
+* {
+  box-sizing: border-box;
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Interactive elements */
+button, a {
+  transition: all 0.2s ease;
+}
+
+/* Custom components */
+.btn-gradient {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary) 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-gradient::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  transition: left 0.5s;
+}
+
+.btn-gradient:hover::before {
+  left: 100%;
+}
+
+/* Card hover effects */
+.card-hover {
+  transition: all 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Slider styling */
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: var(--color-foreground);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+.slider::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: var(--color-foreground);
+  cursor: pointer;
+  border: none;
+  box-shadow: var(--shadow);
+}
+
+/* Responsive utilities */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .card-hover:hover {
+    transform: none;
+  }
+}
+
+.grid-responsive {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+@media (max-width: 768px) {
+  .grid-responsive {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .grid-responsive {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+

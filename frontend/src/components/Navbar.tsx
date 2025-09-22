@@ -1,88 +1,83 @@
-import { ShoppingBag, Search, User } from "lucide-react";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
-import { useSelector, useDispatch } from "react-redux";
-import type { RootState, AppDispatch } from "@/app/store";
-import { logout } from "@/app/features/auth/authSlice";
+import type { RootState } from '@/app/store';
+import { ChevronDown, User } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useSelector } from 'react-redux';
+import { Link } from 'react-router-dom';
+import { Button } from './ui/button';
 
-export function Navbar() {
-  const dispatch: AppDispatch = useDispatch();
+const Navbar = () => {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const handleLogout = () => {
-    dispatch(logout());
-  };
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center">
-        <a href="/" className="mr-6 flex items-center space-x-2">
-          <span className="inline-block font-bold">E-commerce</span>
-        </a>
-        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-          <nav className="flex items-center space-x-6 text-sm font-medium">
-            <a href="/products" className="transition-colors hover:text-foreground/80 text-foreground/60">
-              Products
-            </a>
-            <a href="/about" className="transition-colors hover:text-foreground/80 text-foreground/60">
-              About
-            </a>
-            <a href="/contact" className="transition-colors hover:text-foreground/80 text-foreground/60">
-              Contact
-            </a>
-          </nav>
+    <nav className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+      <div className="container mx-auto px-4 py-3">
+        <div className="flex justify-between items-center">
+          <Link to="/" className="text-xl font-bold text-foreground hover:text-foreground/80">
+            E-Commerce
+          </Link>
           <div className="flex items-center space-x-4">
-            <div className="relative hidden md:block">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search products..."
-                className="h-9 w-[200px] appearance-none bg-background pl-8 shadow-none md:w-[200px] lg:w-[300px]"
-              />
-            </div>
-            <Button variant="ghost" size="icon" className="relative">
-              <ShoppingBag className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
-                0
-              </span>
-            </Button>
+            <Link to="/products" className="text-sm font-medium text-text-muted hover:text-foreground">
+              Products
+            </Link>
+            <Link to="/cart" className="text-sm font-medium text-text-muted hover:text-foreground">
+              Cart
+            </Link>
             {isAuthenticated ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <User className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>{user?.name || 'My Account'}</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>Profile</DropdownMenuItem>
-                  <DropdownMenuItem>Orders</DropdownMenuItem>
-                  <DropdownMenuItem>Settings</DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="relative" ref={dropdownRef}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-3"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                >
+                  <User className="h-4 w-4" />
+                  <span className="ml-2">{user?.name || 'User'}</span>
+                  <ChevronDown className="h-3 w-3 ml-1" />
+                </Button>
+                {isDropdownOpen && (
+                  <div className="absolute top-full right-0 z-50 w-48 bg-background border border-border rounded-md shadow-lg">
+                    <div className="py-1">
+                      <Link
+                        to="/admin"
+                        className="block px-4 py-2 text-sm hover:bg-hover text-foreground"
+                        onClick={() => setIsDropdownOpen(false)}
+                      >
+                        Admin Dashboard
+                      </Link>
+                      <div className="px-4 py-2 text-sm hover:bg-hover text-foreground cursor-pointer">
+                        Profile
+                      </div>
+                      <div className="px-4 py-2 text-sm hover:bg-hover text-foreground cursor-pointer">
+                        Settings
+                      </div>
+                      <div className="px-4 py-2 text-sm hover:bg-hover text-foreground cursor-pointer">
+                        Logout
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
-              <div className="flex space-x-2">
-                <a href="/login">
-                  <Button variant="ghost" size="sm">
-                    Login
-                  </Button>
-                </a>
-                <a href="/register">
-                  <Button size="sm">
-                    Register
-                  </Button>
-                </a>
+              <div className="flex items-center space-x-2">
+                <Link to="/login">
+                  <Button variant="ghost" size="sm">Login</Button>
+                </Link>
+                <Link to="/register">
+                  <Button size="sm">Register</Button>
+                </Link>
               </div>
             )}
           </div>
@@ -90,4 +85,6 @@ export function Navbar() {
       </div>
     </nav>
   );
-}
+};
+
+export default Navbar;
