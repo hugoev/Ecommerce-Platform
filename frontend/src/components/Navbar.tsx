@@ -51,15 +51,26 @@ const Navbar = () => {
                   <div className="absolute top-full right-0 z-50 w-48 bg-background border border-border rounded-md shadow-lg">
                     <div className="py-1">
                       <Link
+                        to="/profile"
+                        className="block px-4 py-2 text-sm hover:bg-hover text-foreground"
+                        onClick={() => setIsDropdownOpen(false)}
+                      >
+                        My Profile
+                      </Link>
+                      <Link
+                        to="/orders"
+                        className="block px-4 py-2 text-sm hover:bg-hover text-foreground"
+                        onClick={() => setIsDropdownOpen(false)}
+                      >
+                        Order History
+                      </Link>
+                      <Link
                         to="/admin"
                         className="block px-4 py-2 text-sm hover:bg-hover text-foreground"
                         onClick={() => setIsDropdownOpen(false)}
                       >
                         Admin Dashboard
                       </Link>
-                      <div className="px-4 py-2 text-sm hover:bg-hover text-foreground cursor-pointer">
-                        Profile
-                      </div>
                       <div className="px-4 py-2 text-sm hover:bg-hover text-foreground cursor-pointer">
                         Settings
                       </div>
