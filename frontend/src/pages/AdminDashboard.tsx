@@ -1,10 +1,13 @@
+import { itemHelpers } from "@/api/items";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { DollarSign, Edit, Package, Plus, ShoppingCart, Users } from "lucide-react";
+import { useItems } from "@/hooks/useItems";
+import { DollarSign, Edit, Loader2, Package, Plus, ShoppingCart, Trash2, Users } from "lucide-react";
+import { useState } from "react";
 
 export function AdminDashboard() {
   // Sample data - in real app this would come from API
@@ -15,6 +18,66 @@ export function AdminDashboard() {
     totalRevenue: 45678.90
   };
 
+  const { items, loading, error, createItem, updateItem, deleteItem } = useItems();
+
+  const [editingProduct, setEditingProduct] = useState(null);
+
+  // Form state for adding/editing products
+  const [productForm, setProductForm] = useState({
+    name: '',
+    price: '',
+    quantity: '',
+    category: '',
+    description: '',
+    image: ''
+  });
+
+  const handleProductSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const newProduct = {
+        name: productForm.name,
+        price: parseFloat(productForm.price),
+        quantity: parseInt(productForm.quantity),
+        category: productForm.category,
+        description: productForm.description
+      };
+
+      if (editingProduct) {
+        await updateItem(editingProduct.id, itemHelpers.toBackend(newProduct));
+      } else {
+        await createItem(newProduct);
+      }
+
+      // Reset form
+      setProductForm({
+        name: '',
+        price: '',
+        quantity: '',
+        category: '',
+        description: '',
+        image: ''
+      });
+      setEditingProduct(null);
+    } catch (error) {
+      console.error('Failed to save product:', error);
+      // Error handling is done in the useItems hook
+    }
+  };
+
+  const handleEditProduct = (product: any) => {
+    setEditingProduct(product);
+    setProductForm({
+      name: product.name,
+      price: product.price.toString(),
+      quantity: product.quantity.toString(),
+      category: product.category,
+      description: product.description,
+      image: product.image
+    });
+  };
+
   const recentOrders = [
     { id: 1001, customer: "John Doe", amount: 129.99, date: "2024-01-15", status: "Completed" },
     { id: 1002, customer: "Jane Smith", amount: 89.50, date: "2024-01-14", status: "Processing" },
@@ -22,7 +85,7 @@ export function AdminDashboard() {
   ];
 
   return (
-    <div className="container py-12">
+    <div className="container py-12 px-4 max-w-7xl mx-auto">
       <div className="text-center mb-12">
         <h1 className="text-5xl md:text-6xl font-bold mb-4">Admin Dashboard</h1>
         <p className="text-lg opacity-80 max-w-2xl mx-auto">Manage products, users, orders, and discount codes</p>
@@ -69,54 +132,6 @@ export function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Product Management */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              Product Management
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Product
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="product-name">Product Name</Label>
-              <Input id="product-name" placeholder="Enter product name" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="product-price">Price</Label>
-              <Input id="product-price" type="number" placeholder="0.00" step="0.01" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="product-quantity">Quantity Available</Label>
-              <Input id="product-quantity" type="number" placeholder="0" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="product-description">Description</Label>
-              <Textarea id="product-description" placeholder="Enter product description" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="product-category">Category</Label>
-              <Select id="product-category">
-                <SelectItem value="electronics">Electronics</SelectItem>
-                <SelectItem value="clothing">Clothing</SelectItem>
-                <SelectItem value="home-kitchen">Home & Kitchen</SelectItem>
-                <SelectItem value="books">Books</SelectItem>
-                <SelectItem value="sports">Sports</SelectItem>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="product-image">Image URL</Label>
-              <Input id="product-image" placeholder="https://example.com/image.jpg" />
-            </div>
-            <div className="flex gap-2">
-              <Button className="flex-1">Create Product</Button>
-              <Button variant="outline" className="flex-1">Update Existing</Button>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* User Management */}
         <Card>
@@ -221,6 +236,200 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Product Listing */}
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Product Management
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => setEditingProduct(null)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Product
+              </Button>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading && (
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <span className="ml-2">Loading products...</span>
+            </div>
+          )}
+          {error && (
+            <div className="text-center py-4">
+              <p className="text-red-600">Error: {error}</p>
+            </div>
+          )}
+          {!loading && !error && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {items.map((product) => (
+              <Card key={product.id} className="group hover:shadow-md transition-shadow">
+                <CardHeader className="p-4">
+                  <div className="aspect-square bg-muted rounded-lg overflow-hidden mb-3">
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                    />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1">{product.name}</h4>
+                    <p className="text-xs text-text-muted mb-2 line-clamp-2">{product.description}</p>
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-primary">${product.price}</span>
+                      <span className="text-xs text-text-muted">{product.quantity} in stock</span>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleEditProduct(product)}
+                    >
+                      <Edit className="h-3 w-3 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        if (confirm('Are you sure you want to delete this product?')) {
+                          try {
+                            await deleteItem(product.id);
+                          } catch (error) {
+                            console.error('Failed to delete product:', error);
+                          }
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Product Form */}
+      {(editingProduct || productForm.name) && (
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>
+              {editingProduct ? 'Edit Product' : 'Add New Product'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleProductSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="product-name">Product Name</Label>
+                  <Input
+                    id="product-name"
+                    value={productForm.name}
+                    onChange={(e) => setProductForm({...productForm, name: e.target.value})}
+                    placeholder="Enter product name"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="product-price">Price</Label>
+                  <Input
+                    id="product-price"
+                    type="number"
+                    step="0.01"
+                    value={productForm.price}
+                    onChange={(e) => setProductForm({...productForm, price: e.target.value})}
+                    placeholder="0.00"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="product-quantity">Quantity Available</Label>
+                  <Input
+                    id="product-quantity"
+                    type="number"
+                    value={productForm.quantity}
+                    onChange={(e) => setProductForm({...productForm, quantity: e.target.value})}
+                    placeholder="0"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="product-category">Category</Label>
+                  <Select
+                    value={productForm.category}
+                    onValueChange={(value) => setProductForm({...productForm, category: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="electronics">Electronics</SelectItem>
+                      <SelectItem value="clothing">Clothing</SelectItem>
+                      <SelectItem value="home-kitchen">Home & Kitchen</SelectItem>
+                      <SelectItem value="books">Books</SelectItem>
+                      <SelectItem value="sports">Sports</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="product-image">Image URL</Label>
+                  <Input
+                    id="product-image"
+                    value={productForm.image}
+                    onChange={(e) => setProductForm({...productForm, image: e.target.value})}
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="product-description">Description</Label>
+                  <Textarea
+                    id="product-description"
+                    value={productForm.description}
+                    onChange={(e) => setProductForm({...productForm, description: e.target.value})}
+                    placeholder="Enter product description"
+                    rows={3}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" className="flex-1">
+                  {editingProduct ? 'Update Product' : 'Create Product'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setEditingProduct(null);
+                    setProductForm({
+                      name: '',
+                      price: '',
+                      quantity: '',
+                      category: '',
+                      description: '',
+                      image: ''
+                    });
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Order Management */}
       <Card className="mt-8">

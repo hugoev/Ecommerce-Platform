@@ -89,6 +89,10 @@ const Navbar = () => {
                 <Link to="/register">
                   <Button size="sm">Register</Button>
                 </Link>
+                {/* Development mode: Allow admin access without authentication */}
+                <Link to="/admin">
+                  <Button variant="outline" size="sm">Admin (Dev)</Button>
+                </Link>
               </div>
             )}
           </div>

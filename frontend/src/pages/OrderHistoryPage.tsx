@@ -54,6 +54,10 @@ export function OrderHistoryPage() {
         return a.total - b.total;
       case 'status':
         return a.status.localeCompare(b.status);
+      case 'customer':
+        // For demo purposes, we'll use the order ID as customer identifier
+        // In real app, this would be the actual customer name
+        return a.id.localeCompare(b.id);
       default:
         return 0;
     }
@@ -114,6 +118,12 @@ export function OrderHistoryPage() {
                 <div className="flex items-center">
                   <Package className="h-4 w-4 mr-2" />
                   Status
+                </div>
+              </SelectItem>
+              <SelectItem value="customer">
+                <div className="flex items-center">
+                  <User className="h-4 w-4 mr-2" />
+                  Customer
                 </div>
               </SelectItem>
             </SelectContent>
