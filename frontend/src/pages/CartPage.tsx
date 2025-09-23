@@ -1,3 +1,4 @@
+import type { RootState } from "@/app/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,6 +7,7 @@ import { useCart } from "@/hooks/useCart";
 import { useItems } from "@/hooks/useItems";
 import { Loader2, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
 export function CartPage() {
@@ -15,14 +17,18 @@ export function CartPage() {
   const [discountCode, setDiscountCode] = useState("");
   const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
 
-  // For demo purposes, using userId = 1 (you would get this from auth context)
-  const userId = 1;
+  // Get current user from auth state
+  const user = useSelector((state: RootState) => state.auth.user);
+  const userId = user?.id;
 
   useEffect(() => {
-    fetchCart(userId);
+    if (userId) {
+      fetchCart(userId);
+    }
   }, [fetchCart, userId]);
 
   const handleUpdateQuantity = async (itemId: number, newQuantity: number) => {
+    if (!userId) return;
     if (newQuantity <= 0) {
       await removeItem(userId, itemId);
     } else {
@@ -31,11 +37,12 @@ export function CartPage() {
   };
 
   const handleRemoveItem = async (itemId: number) => {
+    if (!userId) return;
     await removeItem(userId, itemId);
   };
 
   const handleApplyDiscount = async () => {
-    if (!discountCode.trim()) return;
+    if (!userId || !discountCode.trim()) return;
     
     setIsApplyingDiscount(true);
     try {
@@ -51,6 +58,18 @@ export function CartPage() {
   const getItemDetails = (itemId: number) => {
     return items.find(item => item.id === itemId);
   };
+
+  if (!userId) {
+    return (
+      <div className="container py-8 px-4 max-w-7xl mx-auto">
+        <div className="text-center py-12">
+          <h3 className="text-xl font-semibold mb-2">Please log in to view your cart</h3>
+          <p className="text-text-muted mb-4">You need to be logged in to access your shopping cart</p>
+          <Button onClick={() => navigate('/login')}>Go to Login</Button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

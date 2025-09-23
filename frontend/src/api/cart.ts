@@ -59,6 +59,9 @@ const apiService = {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized - Please log in');
+      }
       const errorData = await response.json().catch(() => ({ message: response.statusText }));
       throw new Error(errorData.message || 'An unknown error occurred');
     }
@@ -82,6 +85,9 @@ const apiService = {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized - Please log in');
+      }
       const errorData = await response.json().catch(() => ({ message: response.statusText }));
       throw new Error(errorData.message || 'An unknown error occurred');
     }
@@ -105,6 +111,9 @@ const apiService = {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized - Please log in');
+      }
       const errorData = await response.json().catch(() => ({ message: response.statusText }));
       throw new Error(errorData.message || 'An unknown error occurred');
     }
@@ -125,6 +134,9 @@ const apiService = {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized - Please log in');
+      }
       const errorData = await response.json().catch(() => ({ message: response.statusText }));
       throw new Error(errorData.message || 'An unknown error occurred');
     }
@@ -134,8 +146,7 @@ const apiService = {
 export const cartApi = {
   // Get cart summary with calculated totals
   getCartSummary(userId: number): Promise<CartResponse> {
-    return apiService.get<{ success: boolean; data: CartResponse }>(`/api/cart/${userId}/summary`)
-      .then(response => response.data);
+    return apiService.get<CartResponse>(`/api/cart/${userId}/summary`);
   },
 
   // Add item to cart
@@ -170,8 +181,7 @@ export const cartApi = {
 
   // Apply discount code
   applyDiscount(userId: number, discountCode: string): Promise<CartResponse> {
-    return apiService.post<{ success: boolean; data: CartResponse }, ApplyDiscountRequest>(`/api/cart/${userId}/discount`, { discountCode })
-      .then(response => response.data);
+    return apiService.post<CartResponse, ApplyDiscountRequest>(`/api/cart/${userId}/discount`, { discountCode });
   },
 };
 
