@@ -1,6 +1,6 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import type { LoginCredentials, RegisterData, User } from '@/types';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import type { User, RegisterData, LoginCredentials } from '@/types';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 
 interface AuthState {
   user: User | null;
@@ -53,6 +53,7 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.status = 'idle';
       state.error = null;
+      localStorage.removeItem('token');
     },
   },
   extraReducers: (builder) => {
@@ -74,10 +75,10 @@ const authSlice = createSlice({
         state.status = 'loading';
         state.error = null;
       })
-      .addCase(loginUser.fulfilled, (state, action: PayloadAction<User>) => {
+      .addCase(loginUser.fulfilled, (state, action: PayloadAction<{ user: User; token: string }>) => {
         state.status = 'succeeded';
         state.isAuthenticated = true;
-        state.user = action.payload;
+        state.user = action.payload.user;
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.status = 'failed';

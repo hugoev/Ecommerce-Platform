@@ -2,6 +2,7 @@ package com.group7.ecommerce.springbackend.user;
 
 import java.util.NoSuchElementException;
 
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.group7.ecommerce.springbackend.common.ApiResponse;
+import com.group7.ecommerce.springbackend.security.JwtTokenProvider;
 
 import jakarta.validation.Valid;
 
@@ -21,9 +23,11 @@ import jakarta.validation.Valid;
 public class UserController {
 
     private final UserService userService;
+    private final JwtTokenProvider jwtTokenProvider;
 
-    public UserController(UserService userService) {
+    public UserController(@Lazy UserService userService, JwtTokenProvider jwtTokenProvider) {
         this.userService = userService;
+        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     @PostMapping("/register")
@@ -44,12 +48,20 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<UserResponseDTO>> login(
+    public ResponseEntity<ApiResponse<LoginResponse>> login(
             @RequestBody @Valid UserRequestDTOs.LoginRequest request) {
         try {
             User user = userService.login(request.getUsername(), request.getPassword());
             UserResponseDTO userResponse = new UserResponseDTO(user);
-            return ResponseEntity.ok(ApiResponse.success(userResponse, "Login successful"));
+
+            // Generate JWT token
+            String token = jwtTokenProvider.generateToken(userService.loadUserByUsername(user.getUsername()));
+
+            LoginResponse loginResponse = new LoginResponse();
+            loginResponse.setUser(userResponse);
+            loginResponse.setToken(token);
+
+            return ResponseEntity.ok(ApiResponse.success(loginResponse, "Login successful"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Invalid credentials"));
@@ -95,6 +107,28 @@ public class UserController {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();
+        }
+    }
+
+    // Inner class for login response
+    public static class LoginResponse {
+        private UserResponseDTO user;
+        private String token;
+
+        public UserResponseDTO getUser() {
+            return user;
+        }
+
+        public void setUser(UserResponseDTO user) {
+            this.user = user;
+        }
+
+        public String getToken() {
+            return token;
+        }
+
+        public void setToken(String token) {
+            this.token = token;
         }
     }
 

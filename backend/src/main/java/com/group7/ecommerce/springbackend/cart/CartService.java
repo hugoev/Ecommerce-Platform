@@ -46,7 +46,7 @@ public class CartService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
 
-        return cartRepository.findByUser(user)
+        return cartRepository.findByUserWithItems(user)
                 .orElseGet(() -> {
                     Cart newCart = new Cart(user);
                     return cartRepository.save(newCart);
@@ -68,7 +68,7 @@ public class CartService {
             throw new IllegalArgumentException("Insufficient stock available");
         }
 
-        Cart cart = cartRepository.findByUser(user)
+        Cart cart = cartRepository.findByUserWithItems(user)
                 .orElseGet(() -> {
                     Cart newCart = new Cart(user);
                     return cartRepository.save(newCart);
@@ -100,7 +100,7 @@ public class CartService {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new NoSuchElementException("Item not found"));
 
-        Cart cart = cartRepository.findByUser(user)
+        Cart cart = cartRepository.findByUserWithItems(user)
                 .orElseThrow(() -> new NoSuchElementException("Cart not found"));
 
         if (quantity == 0) {
@@ -128,7 +128,7 @@ public class CartService {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new NoSuchElementException("Item not found"));
 
-        Cart cart = cartRepository.findByUser(user)
+        Cart cart = cartRepository.findByUserWithItems(user)
                 .orElseThrow(() -> new NoSuchElementException("Cart not found"));
 
         cartItemRepository.deleteByCartAndItem(cart, item);
@@ -141,7 +141,7 @@ public class CartService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
 
-        Cart cart = cartRepository.findByUser(user)
+        Cart cart = cartRepository.findByUserWithItems(user)
                 .orElseThrow(() -> new NoSuchElementException("Cart not found"));
 
         cartItemRepository.deleteByCart(cart);
@@ -160,7 +160,7 @@ public class CartService {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new NoSuchElementException("Item not found"));
 
-        Cart cart = cartRepository.findByUser(user)
+        Cart cart = cartRepository.findByUserWithItems(user)
                 .orElseThrow(() -> new NoSuchElementException("Cart not found"));
 
         CartItem cartItem = cartItemRepository.findByCartAndItem(cart, item)
@@ -190,7 +190,7 @@ public class CartService {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new NoSuchElementException("Item not found"));
 
-        Cart cart = cartRepository.findByUser(user)
+        Cart cart = cartRepository.findByUserWithItems(user)
                 .orElseThrow(() -> new NoSuchElementException("Cart not found"));
 
         CartItem cartItem = cartItemRepository.findByCartAndItem(cart, item)
