@@ -1,20 +1,8 @@
-# E-Commerce Platform - Developer Quickstart Guide
+# E-Commerce Platform
 
-A full-stack online shopping platform featuring a Java Spring Boot backend, React frontend, and PostgreSQL database.
+A full-stack online shopping platform with Java Spring Boot backend, React frontend, and PostgreSQL database.
 
----
-
-### 🏗️ Architecture Overview
-
-- **Backend (`/backend`):** A RESTful API built with Java 17 and the Spring Boot framework.
-- **Frontend (`/frontend`):** A Single-Page Application (SPA) built with React, TypeScript, and Vite.
-- **Database:** A PostgreSQL database, managed via Docker Compose for consistency across all environments.
-
-> ✅ **Status**: All services are fully functional and ready for development!
-
-## 🚀 Quick Start (Recommended)
-
-**Get everything running in 30 seconds:**
+## 🚀 Quick Start
 
 ```bash
 # Clone and start all services
@@ -29,120 +17,97 @@ docker compose up --build
 - 🔧 **Backend API**: http://localhost:8080
 - 🗄️ **Database**: localhost:5432
 
-### 🎯 Current Features
+## 📁 Project Structure
 
-**✅ Working Features:**
-
-- User registration and authentication (JWT-based)
-- Product catalog with search and filtering
-- Admin dashboard for product management
-- Shopping cart functionality (entity structure ready)
-- Order history and management
-- Responsive design with modern UI
-- Database schema with proper relationships
-- TypeScript compilation without errors
-- Docker Compose orchestration
-
----
-
-### 📋 Prerequisites
-
-- **Java 17 (JDK):** For running the backend natively.
-- **Maven:** For managing backend dependencies.
-- **Node.js & npm:** For running the frontend natively.
-- **Docker & Docker Compose:** For running the database or the entire application stack in containers.
-- **Git:** For version control.
-
----
-
-## 🚀 Native Development Quickstart
-
-This guide is for developers who want to actively work on the project by running services on their local machine.
-
-**1. Clone & Initial Setup**
-
-```bash
-# Clone the repository
-git clone https://github.com/hugoev/Ecommerce-Platform.git
-cd Ecommerce-Platform
-
-# Copy the environment file. The defaults are ready for local development.
-cp .env.example .env
+```
+Ecommerce-Platform/
+├── backend/                 # Java Spring Boot API
+│   ├── src/main/java/
+│   │   └── com/group7/ecommerce/springbackend/
+│   │       ├── api/         # REST controllers
+│   │       ├── cart/       # Shopping cart logic
+│   │       ├── item/       # Product management
+│   │       ├── order/      # Order processing
+│   │       ├── user/       # User management
+│   │       └── security/   # JWT authentication
+│   └── src/main/resources/
+│       └── db/migration/   # Database migrations
+├── frontend/               # React TypeScript SPA
+│   ├── src/
+│   │   ├── api/           # API service layer
+│   │   ├── components/    # Reusable UI components
+│   │   ├── pages/         # Application pages
+│   │   ├── hooks/         # Custom React hooks
+│   │   └── types/         # TypeScript definitions
+│   └── package.json
+├── docker-compose.yml      # Container orchestration
+└── README.md
 ```
 
-**2. Start the Database**
+## 🛠️ Development Setup
 
-We use Docker to run the database. This is the only container you need for native development.
-
-```bash
-# This command starts a PostgreSQL container in the background and runs migrations.
-docker compose up -d db
-```
-
-**3. Backend Setup (Java/Spring)**
-
-- Open the `/backend` directory in your favorite Java IDE (e.g., IntelliJ IDEA, VS Code).
-- Your IDE will detect the `pom.xml` and should automatically download all Maven dependencies.
-- The configuration in `backend/src/main/resources/application.properties` is pre-set to connect to the Dockerized database.
-- Locate and run the main application class: `SpringBackendApplication.java`.
-
-> ✅ The backend API is now running at **[http://localhost:8080](http://localhost:8080)**.
-
-**4. Frontend Setup (React/Vite)**
-
-- Open a new terminal window.
+### Option 1: Docker Compose (Recommended)
 
 ```bash
-# Navigate to the frontend directory
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start the Vite development server
-npm run dev
-```
-
-> ✅ The frontend application is now running at **[http://localhost:5173](http://localhost:5173)** with hot-reloading.
-
----
-
-## 🐳 Docker Compose Full-Stack
-
-This is the simplest way to run the entire application without installing Java or Node.js locally. It's ideal for quick previews or integration testing.
-
-```bash
-# This single command builds and starts the db, backend, and frontend.
 docker compose up --build
 ```
 
-> ✅ **All services will be available at:**
->
-> - Frontend: http://localhost:5173
-> - Backend API: http://localhost:8080
-> - Database: localhost:5432
+### Option 2: Native Development
+
+```bash
+# 1. Start database
+docker compose up -d db
+
+# 2. Backend (Java/Spring)
+cd backend
+mvn spring-boot:run
+
+# 3. Frontend (React/Vite)
+cd frontend
+npm install
+npm run dev
+```
+
+## 🎯 Features
+
+- **Authentication**: JWT-based user registration/login
+- **Product Catalog**: Search, filter, and browse products
+- **Shopping Cart**: Add/remove items, quantity management
+- **Order Management**: Place orders, track status
+- **Admin Dashboard**: Product and order management
+- **Responsive Design**: Modern UI with Tailwind CSS
+
+## 📋 Key Files
+
+### Backend
+
+- `SpringBackendApplication.java` - Main application entry point
+- `application.properties` - Database and JWT configuration
+- `V1__Initial_Schema.sql` - Database schema creation
+- `V2__Make_Email_Optional.sql` - Email field removal migration
+- `DataInitializer.java` - Seeds database with sample data
+
+### Frontend
+
+- `main.tsx` - React app entry point
+- `App.tsx` - Main app component with routing
+- `api/` - API service layer for backend communication
+- `hooks/` - Custom React hooks for state management
+- `pages/` - Application pages (Cart, Products, Admin, etc.)
+
+### Configuration
+
+- `docker-compose.yml` - Container orchestration
+- `.env` - Environment variables
+- `package.json` - Frontend dependencies
+- `pom.xml` - Backend dependencies
 
 ---
 
-### 🛠️ Backend Details
+## 🔧 Backend (Java Spring Boot)
 
-- **Tech Stack:**
-
-  - Framework: Spring Boot 3
-  - Language: Java 17
-  - Database: PostgreSQL with Flyway for migrations
-  - Security: Spring Security with JWT authentication
-  - Build: Apache Maven
-
-- **Key Features:**
-
-  - RESTful API with structured DTOs
-  - Role-based authorization (USER, ADMIN)
-  - JWT-based authentication
-  - Shopping cart functionality
-  - Product management (CRUD operations)
-  - User registration and login
-  - Database schema management with Flyway
+- **Tech Stack**: Spring Boot 3, Java 17, PostgreSQL, JWT Authentication
+- **Features**: RESTful API, role-based authorization, shopping cart, product management
 
 - **Available Endpoints:**
 
@@ -274,86 +239,157 @@ docker compose up --build
   - `JWT_SECRET`: Secret key for signing JWTs.
   - `JWT_EXPIRATION`: Token expiration time in seconds.
 
-### 🎨 Frontend Details
+## 🎨 Frontend (React TypeScript)
 
-- **Tech Stack:**
+- **Tech Stack**: React, TypeScript, Vite, Tailwind CSS, Redux Toolkit
+- **Features**: SPA architecture, type-safe API calls, responsive design
 
-  - Framework: React (with Vite)
-  - Language: TypeScript
-  - Styling: Tailwind CSS
-  - State Management: Redux Toolkit
-  - UI Components: Custom component library
+## 🗃️ Database
 
-- **Key Features:**
+- **Schema Management**: Flyway migrations in `backend/src/main/resources/db/migration/`
+- **Tables**: users, items, orders, carts, cart_items with proper relationships
+- **Seeded Data**: 10 sample products, 2 users, 3 discount codes
 
-  - Single-Page Application architecture
-  - Type-safe components and API calls
-  - Environment-aware API configuration
-  - User authentication and authorization
-  - Product catalog with search and filtering
-  - Admin dashboard for product management
-  - Shopping cart functionality
-  - Responsive design
+## 🛠️ Development Tips
 
-- **Project Structure:**
+### Backend Development
 
-  ```
-  frontend/
-  ├── src/
-  │   ├── api/         # API service layer
-  │   ├── app/         # Redux store configuration
-  │   ├── components/  # Reusable UI components
-  │   ├── pages/       # Application pages
-  │   ├── types/       # TypeScript type definitions
-  │   └── hooks/       # Custom React hooks
-  ```
+```bash
+# Run tests
+mvn test
 
-- **Available Scripts:**
-  - `npm run dev`: Starts the development server with hot-reloading
-  - `npm run build`: Creates a production-ready build in the `/dist` folder
-  - `npm run preview`: Preview the production build locally
+# Check database connection
+docker compose exec db psql -U ecommerce_user -d ecommerce
 
----
+# View logs
+docker compose logs backend
+```
 
-### 🧪 Testing
+### Frontend Development
 
-- **Backend Unit & Integration Tests:**
-  Run the tests using the Maven wrapper inside the running backend container or natively.
+```bash
+# Install dependencies
+npm install
 
-  ```bash
-  # Via Docker
-  docker compose exec backend mvn test
+# Development server with hot reload
+npm run dev
 
-  # Natively
-  cd backend
-  mvn test
-  ```
+# Build for production
+npm run build
 
----
+# Type checking
+npx tsc --noEmit
+```
 
-### 🗃️ Database
+### Database Changes
 
-- **Schema Management:** The database schema is managed entirely by [Flyway](https://flywaydb.org/). Migration scripts are located in `backend/src/main/resources/db/migration`.
-- **Current Schema:** The database includes tables for users, items, orders, carts, and cart items with proper relationships and indexes.
-- **Workflow for DB Changes:**
-  1.  Create a new SQL file in the migration directory named `V<VERSION>__Description.sql` (e.g., `V2__Add_user_address.sql`).
-  2.  Write your `ALTER TABLE`, `CREATE TABLE`, etc. statements.
-  3.  Restart the application (`docker compose up -d db` or your Java app). Flyway will automatically apply the new migration.
+1. Create migration file: `V3__Add_new_feature.sql`
+2. Add your SQL statements
+3. Restart backend: `docker compose restart backend`
 
----
+### Common Commands
 
-### 🚨 Common Issues
+```bash
+# Restart specific service
+docker compose restart backend
 
-- **Port Conflicts:** If you have another service running on `8080`, `5173`, or `5432`, the application may fail to start. Stop the conflicting service or change the port mappings in `docker-compose.yml` and `application.properties`.
-- **Backend fails to connect to DB (Native):** Ensure your Docker `db` container is running before you start the Java application. Run `docker ps` to verify.
-- **Docker Compose Command:** Use `docker compose` (with space) instead of `docker-compose` (with hyphen) for newer Docker versions.
-- **TypeScript Compilation Errors:** All frontend TypeScript issues have been resolved. The project uses proper type definitions and interfaces.
+# View all logs
+docker compose logs
 
-### 🎯 Recent Fixes & Improvements
+# Clean rebuild
+docker compose down
+docker compose up --build
 
-- ✅ **Resolved Circular Dependencies:** Fixed complex circular dependency issues in Spring Security configuration
-- ✅ **Updated JWT Implementation:** Migrated to the latest JWT API with proper token handling
-- ✅ **Fixed TypeScript Errors:** Resolved all frontend compilation issues and property mismatches
-- ✅ **Database Schema Alignment:** Updated entities to match database schema with proper relationships
-- ✅ **Enhanced Security:** Implemented proper JWT authentication with role-based authorization
-- ✅ **Improved Frontend:** Added proper TypeScript types and component interfaces
+# Access database
+docker compose exec db psql -U ecommerce_user -d ecommerce
+```
+
+## 🔧 Environment Variables
+
+Create `.env` file in project root:
+
+```env
+# Database
+POSTGRES_DB=ecommerce
+POSTGRES_USER=ecommerce_user
+POSTGRES_PASSWORD=ecommerce_password
+
+# JWT
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_EXPIRATION=86400
+```
+
+## 🧪 Testing
+
+### Backend Tests
+
+```bash
+# Run all tests
+mvn test
+
+# Run specific test class
+mvn test -Dtest=UserServiceTest
+
+# Run with coverage
+mvn test jacoco:report
+```
+
+### Frontend Tests
+
+```bash
+# Type checking
+npx tsc --noEmit
+
+# Linting
+npm run lint
+
+# Build test
+npm run build
+```
+
+### API Testing
+
+```bash
+# Test user registration
+curl -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","password":"password123"}'
+
+# Test login
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","password":"password123"}'
+```
+
+## 🔄 Development Workflow
+
+1. **Make changes** to backend or frontend code
+2. **Test locally** using Docker Compose or native development
+3. **Run tests** to ensure nothing is broken
+4. **Commit changes** with descriptive messages
+5. **Push to repository** for deployment
+
+### Git Workflow
+
+```bash
+# Create feature branch
+git checkout -b feature/new-feature
+
+# Make changes and commit
+git add .
+git commit -m "feat: add new feature"
+
+# Push to remote
+git push origin feature/new-feature
+
+# Create pull request
+```
+
+## 🐛 Troubleshooting
+
+- **Port conflicts**: Change ports in `docker-compose.yml`
+- **Backend won't start**: Check database is running with `docker compose ps`
+- **Frontend build errors**: Run `npm install` and check TypeScript errors
+- **Database connection**: Verify `.env` file exists and database container is running
+- **JWT token issues**: Check `JWT_SECRET` in `.env` file
+- **CORS errors**: Verify backend CORS configuration in `SecurityConfig.java`
