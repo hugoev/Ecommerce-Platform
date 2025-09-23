@@ -7,16 +7,21 @@ CREATE TABLE users (
     first_name VARCHAR(255),
     last_name VARCHAR(255),
     role VARCHAR(50) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    address VARCHAR(500),
+    phone VARCHAR(50)
 );
 
 CREATE TABLE items (
     id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
+    title VARCHAR(255) NOT NULL,
     description TEXT,
     price DECIMAL(10, 2) NOT NULL,
     quantity_available INT NOT NULL,
     image_url VARCHAR(255),
+    category VARCHAR(255),
+    sku VARCHAR(255),
     is_on_sale BOOLEAN DEFAULT FALSE,
     discounted_price DECIMAL(10, 2),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -51,7 +56,26 @@ CREATE TABLE order_items (
     price_at_purchase DECIMAL(10, 2) NOT NULL
 );
 
-CREATE INDEX idx_items_name ON items(name);
+CREATE TABLE carts (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE cart_items (
+    id BIGSERIAL PRIMARY KEY,
+    cart_id BIGINT NOT NULL REFERENCES carts(id),
+    item_id BIGINT NOT NULL REFERENCES items(id),
+    quantity INT NOT NULL,
+    price_at_addition DECIMAL(10, 2) NOT NULL,
+    added_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_items_title ON items(title);
 CREATE INDEX idx_items_price ON items(price);
 CREATE INDEX idx_orders_user_id ON orders(user_id);
 CREATE INDEX idx_orders_order_date ON orders(order_date);
+CREATE INDEX idx_carts_user_id ON carts(user_id);
+CREATE INDEX idx_cart_items_cart_id ON cart_items(cart_id);
+CREATE INDEX idx_cart_items_item_id ON cart_items(item_id);

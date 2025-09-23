@@ -2,14 +2,14 @@ package com.group7.ecommerce.springbackend.user;
 
 import java.time.LocalDateTime;
 
-import com.group7.ecommerce.springbackend.user.User.UserRole;
+import com.group7.ecommerce.springbackend.user.User.Role;
 
 public class UserResponseDTO {
     private Long id;
     private String username;
     private String email;
     private String fullName;
-    private UserRole role;
+    private Role role;
     private LocalDateTime createdAt;
     private Boolean isActive;
     private String address;
@@ -63,11 +63,11 @@ public class UserResponseDTO {
         this.fullName = fullName;
     }
 
-    public UserRole getRole() {
+    public Role getRole() {
         return role;
     }
 
-    public void setRole(UserRole role) {
+    public void setRole(Role role) {
         this.role = role;
     }
 
@@ -103,3 +103,4 @@ public class UserResponseDTO {
         this.phone = phone;
     }
 }
+

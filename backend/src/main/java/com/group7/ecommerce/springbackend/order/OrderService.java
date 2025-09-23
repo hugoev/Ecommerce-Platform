@@ -1,16 +1,17 @@
 package com.group7.ecommerce.springbackend.order;
 
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.group7.ecommerce.springbackend.cart.CartDto;
 import com.group7.ecommerce.springbackend.cart.CartItemDto;
 import com.group7.ecommerce.springbackend.item.Item;
 import com.group7.ecommerce.springbackend.item.ItemRepository;
 import com.group7.ecommerce.springbackend.user.User;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Service
 public class OrderService {
@@ -41,7 +42,7 @@ public class OrderService {
                     .orElseThrow(() -> new IllegalArgumentException("Item not found: " + itemDto.getItemId()));
 
             if (item.getQuantityAvailable() < itemDto.getQuantity()) {
-                throw new IllegalStateException("Not enough stock for item: " + item.getName());
+                throw new IllegalStateException("Not enough stock for item: " + item.getTitle());
             }
 
             item.setQuantityAvailable(item.getQuantityAvailable() - itemDto.getQuantity());

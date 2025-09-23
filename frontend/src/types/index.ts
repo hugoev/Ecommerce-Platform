@@ -1,11 +1,12 @@
 export interface Item {
   id: number;
-  name: string;
+  title: string;
   description: string;
   price: number;
   quantityAvailable: number;
   imageUrl?: string;
-  category?: string; // Note: This is a frontend-only concept for now
+  category?: string;
+  sku?: string;
 }
 
 export interface User {
@@ -21,6 +22,8 @@ export interface RegisterData {
   username: string;
   email: string;
   password: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 export interface LoginCredentials {

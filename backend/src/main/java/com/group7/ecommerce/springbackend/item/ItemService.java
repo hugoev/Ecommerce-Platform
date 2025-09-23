@@ -62,7 +62,7 @@ public class ItemService {
             existing.setDescription(updates.getDescription());
         if (updates.getPrice() != null)
             existing.setPrice(updates.getPrice());
-        if (updates.getQuantityAvailable() != null)
+        if (updates.getQuantityAvailable() != 0)
             existing.setQuantityAvailable(updates.getQuantityAvailable());
         if (updates.getImageUrl() != null)
             existing.setImageUrl(updates.getImageUrl());

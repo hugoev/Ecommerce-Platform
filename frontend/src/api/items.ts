@@ -8,6 +8,9 @@ export interface ItemResponse {
   description: string;
   price: number;
   quantityAvailable: number;
+  imageUrl?: string;
+  category?: string;
+  sku?: string;
 }
 
 export interface CreateItemData {
@@ -15,6 +18,9 @@ export interface CreateItemData {
   description: string;
   price: number;
   quantityAvailable: number;
+  imageUrl?: string;
+  category?: string;
+  sku?: string;
 }
 
 export interface UpdateItemData {
@@ -22,6 +28,9 @@ export interface UpdateItemData {
   description?: string;
   price?: number;
   quantityAvailable?: number;
+  imageUrl?: string;
+  category?: string;
+  sku?: string;
 }
 
 const apiService = {
@@ -139,20 +148,25 @@ export const itemHelpers = {
   fromBackend(item: ItemResponse): Item {
     return {
       id: item.id,
-      name: item.title,
+      title: item.title,
       description: item.description,
       price: item.price,
-      quantity: item.quantityAvailable,
-      category: 'General' // Backend doesn't have category field
+      quantityAvailable: item.quantityAvailable,
+      category: item.category,
+      imageUrl: item.imageUrl,
+      sku: item.sku
     };
   },
 
   toBackend(item: Omit<Item, 'id'>): CreateItemData {
     return {
-      title: item.name,
+      title: item.title,
       description: item.description,
       price: item.price,
-      quantityAvailable: item.quantity
+      quantityAvailable: item.quantityAvailable,
+      category: item.category,
+      imageUrl: item.imageUrl,
+      sku: item.sku
     };
   }
 };

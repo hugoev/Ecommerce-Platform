@@ -20,6 +20,42 @@ public class CartService {
         this.discountCodeRepository = discountCodeRepository;
     }
 
+    // Placeholder methods - these would need proper implementation with repositories
+    public Cart getCart(Long userId) {
+        // TODO: Implement cart retrieval logic
+        throw new UnsupportedOperationException("Cart functionality not yet implemented");
+    }
+
+    public Cart addItemToCart(Long userId, Long itemId, int quantity) {
+        // TODO: Implement add item to cart logic
+        throw new UnsupportedOperationException("Cart functionality not yet implemented");
+    }
+
+    public Cart updateItemQuantity(Long userId, Long itemId, int quantity) {
+        // TODO: Implement update item quantity logic
+        throw new UnsupportedOperationException("Cart functionality not yet implemented");
+    }
+
+    public Cart removeItemFromCart(Long userId, Long itemId) {
+        // TODO: Implement remove item from cart logic
+        throw new UnsupportedOperationException("Cart functionality not yet implemented");
+    }
+
+    public void clearCart(Long userId) {
+        // TODO: Implement clear cart logic
+        throw new UnsupportedOperationException("Cart functionality not yet implemented");
+    }
+
+    public Cart increaseItemQuantity(Long userId, Long itemId, int amount) {
+        // TODO: Implement increase item quantity logic
+        throw new UnsupportedOperationException("Cart functionality not yet implemented");
+    }
+
+    public Cart decreaseItemQuantity(Long userId, Long itemId, int amount) {
+        // TODO: Implement decrease item quantity logic
+        throw new UnsupportedOperationException("Cart functionality not yet implemented");
+    }
+
     public CartDto calculateCart(CartDto cart) {
         BigDecimal subtotal = BigDecimal.ZERO;
         for (CartItemDto item : cart.getItems()) {
