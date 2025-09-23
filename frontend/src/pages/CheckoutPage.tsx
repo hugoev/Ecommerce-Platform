@@ -3,40 +3,92 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { CreditCard, MapPin, CheckCircle } from "lucide-react";
-import { useState } from "react";
+import { useCart } from "@/hooks/useCart";
+import { useOrders } from "@/hooks/useOrders";
+import { CreditCard, MapPin, CheckCircle, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export function CheckoutPage() {
   const navigate = useNavigate();
+  const { cart, loading: cartLoading, error: cartError, fetchCart, applyDiscount: applyDiscountToCart } = useCart();
+  const { placeOrder } = useOrders();
   const [discountCode, setDiscountCode] = useState("");
-  const [discountApplied, setDiscountApplied] = useState(false);
+  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
-  // Sample cart data - in real app this would come from cart state
-  const cartItems = [
-    { id: 1, name: "Wireless Headphones", price: 89.99, quantity: 2 },
-    { id: 2, name: "Smart Watch", price: 199.99, quantity: 1 },
-    { id: 3, name: "Cotton T-Shirt", price: 19.99, quantity: 1 }
-  ];
+  // For demo purposes, using userId = 1 (you would get this from auth context)
+  const userId = 1;
 
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const taxRate = 0.0825; // 8.25% as required
-  const tax = subtotal * taxRate;
-  const shipping = subtotal > 100 ? 0 : 9.99; // Free shipping over $100
-  const discount = discountApplied ? subtotal * 0.1 : 0; // 10% discount for demo
-  const total = subtotal + tax + shipping - discount;
+  useEffect(() => {
+    fetchCart(userId);
+  }, [fetchCart, userId]);
 
-  const applyDiscount = () => {
-    if (discountCode.toLowerCase() === 'save10') {
-      setDiscountApplied(true);
+  const handleApplyDiscount = async () => {
+    if (!discountCode.trim()) return;
+    
+    setIsApplyingDiscount(true);
+    try {
+      await applyDiscountToCart(userId, discountCode);
+    } catch (error) {
+      console.error('Failed to apply discount:', error);
+    } finally {
+      setIsApplyingDiscount(false);
     }
   };
 
-  const handlePlaceOrder = () => {
-    // In real app, this would process the order
-    alert("Order placed successfully!");
-    navigate("/orders");
+  const handlePlaceOrder = async () => {
+    if (!cart || cart.items.length === 0) {
+      alert("Your cart is empty!");
+      return;
+    }
+
+    setIsPlacingOrder(true);
+    try {
+      await placeOrder();
+      alert("Order placed successfully!");
+      navigate("/orders");
+    } catch (error) {
+      console.error('Failed to place order:', error);
+      alert("Failed to place order. Please try again.");
+    } finally {
+      setIsPlacingOrder(false);
+    }
   };
+
+  if (cartLoading) {
+    return (
+      <div className="container py-8 px-4 max-w-6xl mx-auto">
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Loading checkout...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (cartError || !cart) {
+    return (
+      <div className="container py-8 px-4 max-w-6xl mx-auto">
+        <div className="text-center py-12">
+          <p className="text-red-600 mb-4">Error: {cartError || 'Cart not found'}</p>
+          <Button onClick={() => navigate('/cart')}>Back to Cart</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (cart.items.length === 0) {
+    return (
+      <div className="container py-8 px-4 max-w-6xl mx-auto">
+        <div className="text-center py-12">
+          <h1 className="text-2xl font-bold mb-4">Your cart is empty</h1>
+          <p className="text-text-muted mb-4">Add some items to your cart before checkout.</p>
+          <Button onClick={() => navigate('/products')}>Browse Products</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container py-8 px-4 max-w-6xl mx-auto">
@@ -56,17 +108,18 @@ export function CheckoutPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {cartItems.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-4 py-4 border-b border-border last:border-b-0">
+                {cart.items.map((item) => (
+                  <div key={item.itemId} className="flex items-center space-x-4 py-4 border-b border-border last:border-b-0">
                     <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center">
                       <span className="text-xs font-medium">Item</span>
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold">{item.name}</h3>
+                      <h3 className="font-semibold">{item.itemName}</h3>
                       <p className="text-sm text-text-muted">Quantity: {item.quantity}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-semibold">${item.price.toFixed(2)}</p>
+                      <p className="text-sm text-text-muted">Total: ${item.lineTotal.toFixed(2)}</p>
                     </div>
                   </div>
                 ))}
@@ -158,12 +211,19 @@ export function CheckoutPage() {
                     value={discountCode}
                     onChange={(e) => setDiscountCode(e.target.value)}
                   />
-                  <Button variant="outline" onClick={applyDiscount} size="sm">
-                    Apply
+                  <Button 
+                    variant="outline" 
+                    onClick={handleApplyDiscount} 
+                    size="sm"
+                    disabled={isApplyingDiscount}
+                  >
+                    {isApplyingDiscount ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
                   </Button>
                 </div>
-                {discountApplied && (
-                  <p className="text-sm text-green-600 mt-1">10% discount applied!</p>
+                {cart.appliedDiscountCode && (
+                  <p className="text-sm text-green-600 mt-1">
+                    Discount code "{cart.appliedDiscountCode}" applied!
+                  </p>
                 )}
               </div>
 
@@ -171,32 +231,37 @@ export function CheckoutPage() {
               <div className="space-y-2 pt-4 border-t">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span>${subtotal.toFixed(2)}</span>
+                  <span>${cart.subtotal.toFixed(2)}</span>
                 </div>
-                {discountApplied && (
+                {cart.discountAmount > 0 && (
                   <div className="flex justify-between text-green-600">
-                    <span>Discount (10%):</span>
-                    <span>-${discount.toFixed(2)}</span>
+                    <span>Discount:</span>
+                    <span>-${cart.discountAmount.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span>Shipping:</span>
-                  <span>{shipping === 0 ? 'FREE' : `$${shipping.toFixed(2)}`}</span>
-                </div>
-                <div className="flex justify-between">
                   <span>Tax (8.25%):</span>
-                  <span>${tax.toFixed(2)}</span>
+                  <span>${cart.tax.toFixed(2)}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between font-bold text-lg pt-2">
                   <span>Total:</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>${cart.total.toFixed(2)}</span>
                 </div>
               </div>
 
-              <Button className="w-full mt-6" size="lg" onClick={handlePlaceOrder}>
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Place Order
+              <Button 
+                className="w-full mt-6" 
+                size="lg" 
+                onClick={handlePlaceOrder}
+                disabled={isPlacingOrder}
+              >
+                {isPlacingOrder ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                )}
+                {isPlacingOrder ? "Placing Order..." : "Place Order"}
               </Button>
 
               <div className="text-center">

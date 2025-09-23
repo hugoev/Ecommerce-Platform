@@ -3,30 +3,113 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { User } from "lucide-react";
-import { useState } from "react";
+import { useUser } from "@/hooks/useUser";
+import { useOrders } from "@/hooks/useOrders";
+import { User, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const { profile, loading, error, fetchProfile, updateProfile, changePassword } = useUser();
+  const { orders } = useOrders();
+  
+  // For demo purposes, using userId = 1 (you would get this from auth context)
+  const userId = 1;
 
-  // Sample user data - in real app this would come from API/state
-  const [userInfo, setUserInfo] = useState({
-    name: "John Doe",
-    email: "john.doe@example.com",
-    phone: "+1 (555) 123-4567",
-    address: "123 Main Street, Anytown, USA 12345",
-    bio: "Software developer who loves online shopping!"
+  const [formData, setFormData] = useState({
+    fullName: '',
+    address: '',
+    phone: '',
   });
 
-  const handleSave = () => {
-    // In real app, this would save to API
-    setIsEditing(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+
+  useEffect(() => {
+    fetchProfile(userId);
+  }, [fetchProfile, userId]);
+
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        fullName: profile.fullName || '',
+        address: profile.address || '',
+        phone: profile.phone || '',
+      });
+    }
+  }, [profile]);
+
+  const handleSave = async () => {
+    try {
+      await updateProfile(userId, formData);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+    }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    // Reset changes - in real app would reload from API
+    if (profile) {
+      setFormData({
+        fullName: profile.fullName || '',
+        address: profile.address || '',
+        phone: profile.phone || '',
+      });
+    }
   };
+
+  const handleChangePassword = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      alert('New passwords do not match');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      await changePassword(userId, {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+      alert('Password changed successfully');
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+    } catch (error) {
+      console.error('Failed to change password:', error);
+      alert('Failed to change password. Please check your current password.');
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="container py-8 px-4 max-w-4xl mx-auto">
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Loading profile...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !profile) {
+    return (
+      <div className="container py-8 px-4 max-w-4xl mx-auto">
+        <div className="text-center py-12">
+          <p className="text-red-600 mb-4">Error: {error || 'Profile not found'}</p>
+          <Button onClick={() => fetchProfile(userId)}>Try Again</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container py-8 px-4 max-w-4xl mx-auto">
@@ -47,32 +130,22 @@ export function ProfilePage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  {isEditing ? (
-                    <Input
-                      id="name"
-                      value={userInfo.name}
-                      onChange={(e) => setUserInfo({...userInfo, name: e.target.value})}
-                    />
-                  ) : (
-                    <p className="text-sm font-medium text-foreground py-2">{userInfo.name}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  {isEditing ? (
-                    <Input
-                      id="email"
-                      type="email"
-                      value={userInfo.email}
-                      onChange={(e) => setUserInfo({...userInfo, email: e.target.value})}
-                    />
-                  ) : (
-                    <p className="text-sm font-medium text-foreground py-2">{userInfo.email}</p>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <p className="text-sm font-medium text-foreground py-2">{profile.username}</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                {isEditing ? (
+                  <Input
+                    id="fullName"
+                    value={formData.fullName}
+                    onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+                  />
+                ) : (
+                  <p className="text-sm font-medium text-foreground py-2">{profile.fullName || 'Not set'}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -80,39 +153,25 @@ export function ProfilePage() {
                 {isEditing ? (
                   <Input
                     id="phone"
-                    value={userInfo.phone}
-                    onChange={(e) => setUserInfo({...userInfo, phone: e.target.value})}
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
                   />
                 ) : (
-                  <p className="text-sm font-medium text-foreground py-2">{userInfo.phone}</p>
+                  <p className="text-sm font-medium text-foreground py-2">{profile.phone || 'Not set'}</p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="address">Shipping Address</Label>
+                <Label htmlFor="address">Address</Label>
                 {isEditing ? (
                   <Textarea
                     id="address"
-                    value={userInfo.address}
-                    onChange={(e) => setUserInfo({...userInfo, address: e.target.value})}
+                    value={formData.address}
+                    onChange={(e) => setFormData({...formData, address: e.target.value})}
                     rows={3}
                   />
                 ) : (
-                  <p className="text-sm font-medium text-foreground py-2">{userInfo.address}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bio">Bio</Label>
-                {isEditing ? (
-                  <Textarea
-                    id="bio"
-                    value={userInfo.bio}
-                    onChange={(e) => setUserInfo({...userInfo, bio: e.target.value})}
-                    rows={3}
-                  />
-                ) : (
-                  <p className="text-sm font-medium text-foreground py-2">{userInfo.bio}</p>
+                  <p className="text-sm font-medium text-foreground py-2">{profile.address || 'Not set'}</p>
                 )}
               </div>
 
@@ -139,15 +198,22 @@ export function ProfilePage() {
             <CardContent className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-text-muted">Orders Placed</span>
-                <span className="font-semibold text-foreground">12</span>
+                <span className="font-semibold text-foreground">{orders.length}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-text-muted">Total Spent</span>
-                <span className="font-semibold text-foreground">$1,247.89</span>
+                <span className="font-semibold text-foreground">
+                  ${orders.reduce((sum, order) => sum + order.total, 0).toFixed(2)}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-text-muted">Member Since</span>
-                <span className="font-semibold text-foreground">Jan 2024</span>
+                <span className="font-semibold text-foreground">
+                  {new Date(profile.createdAt).toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'short' 
+                  })}
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -156,16 +222,43 @@ export function ProfilePage() {
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-4">
               <Button variant="outline" className="w-full justify-start">
                 View Order History
               </Button>
-              <Button variant="outline" className="w-full justify-start">
-                Change Password
-              </Button>
-              <Button variant="outline" className="w-full justify-start text-destructive hover:text-destructive">
-                Delete Account
-              </Button>
+              
+              {/* Password Change Section */}
+              <div className="space-y-3 pt-4 border-t">
+                <h4 className="font-medium">Change Password</h4>
+                <div className="space-y-2">
+                  <Input
+                    type="password"
+                    placeholder="Current password"
+                    value={passwordData.currentPassword}
+                    onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
+                  />
+                  <Input
+                    type="password"
+                    placeholder="New password"
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                  />
+                  <Input
+                    type="password"
+                    placeholder="Confirm new password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                  />
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={handleChangePassword}
+                    disabled={isChangingPassword}
+                  >
+                    {isChangingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : "Change Password"}
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
