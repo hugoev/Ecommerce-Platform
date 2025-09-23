@@ -1,14 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Package, Calendar, DollarSign, User } from "lucide-react";
+import { Calendar, DollarSign, Package, User } from "lucide-react";
 import { useState } from "react";
 
 export function OrderHistoryPage() {
   const [sortBy, setSortBy] = useState("date-desc");
 
   // Sample order data - in real app this would come from API
-  const [orders, setOrders] = useState([
+  const [orders] = useState([
     {
       id: "ORD-2024-001",
       date: "2024-01-15",
@@ -85,7 +85,7 @@ export function OrderHistoryPage() {
       <div className="mb-6 flex justify-end">
         <div className="flex items-center space-x-2">
           <span className="text-sm font-medium">Sort by:</span>
-          <Select value={sortBy} onVolumeChange={setSortBy}>
+          <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-48">
               <SelectValue />
             </SelectTrigger>

@@ -1,7 +1,5 @@
 import { cn } from "@/lib/utils";
 
-import { useState, useRef, useEffect } from "react";
-
 interface DropdownMenuProps {
   children: React.ReactNode;
 }
@@ -20,7 +18,7 @@ export function DropdownMenu({ children }: DropdownMenuProps) {
   return <div className="relative">{children}</div>;
 }
 
-export function DropdownMenuTrigger({ children, asChild }: DropdownMenuTriggerProps) {
+export function DropdownMenuTrigger({ children }: DropdownMenuTriggerProps) {
   return <>{children}</>;
 }
 

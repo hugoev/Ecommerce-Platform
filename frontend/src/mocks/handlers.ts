@@ -1,5 +1,5 @@
-import { http, HttpResponse } from 'msw'
-import type { RegisterData, LoginCredentials } from '@/types';
+import type { LoginCredentials, RegisterData } from '@/types';
+import { http, HttpResponse } from 'msw';
 
 export const handlers = [
 
@@ -10,8 +10,10 @@ export const handlers = [
       console.log('MSW: Intercepted REGISTER request with:', newUser);
       return HttpResponse.json({
         id: '1',
-        name: newUser.name,
+        username: newUser.username,
         email: newUser.email,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
       }, { status: 201 });
     } catch (error) {
       console.error('MSW: Error parsing register request body:', error);
@@ -24,11 +26,13 @@ export const handlers = [
     try {
       const credentials = await request.json() as LoginCredentials;
       console.log('MSW: Intercepted LOGIN request with:', credentials);
-      if (credentials.email) {
+      if (credentials.username) {
         return HttpResponse.json({
           id: '1',
-          name: 'Test User',
-          email: credentials.email,
+          username: credentials.username,
+          email: 'test@example.com',
+          firstName: 'Test',
+          lastName: 'User',
         }, { status: 200 });
       } else {
         return HttpResponse.json({ message: 'Invalid credentials' }, { status: 401 });

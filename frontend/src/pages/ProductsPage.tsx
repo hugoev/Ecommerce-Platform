@@ -64,7 +64,7 @@ export function ProductsPage() {
         <div className="flex justify-center">
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium">Sort by:</span>
-            <Select value={`${sortBy}-${sortDirection}`} onVolumeChange={handleSortChange}>
+            <Select value={`${sortBy}-${sortDirection}`} onValueChange={handleSortChange}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Sort products" />
               </SelectTrigger>
@@ -104,14 +104,14 @@ export function ProductsPage() {
               <CardHeader className="p-0">
                 <div className="aspect-square bg-muted rounded-lg overflow-hidden">
                   <img
-                    src={`https://via.placeholder.com/280x280?text=${product.name.replace(/\s+/g, '+')}`}
-                    alt={product.name}
+                    src={product.imageUrl || `https://via.placeholder.com/280x280?text=${product.title.replace(/\s+/g, '+')}`}
+                    alt={product.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                   />
                 </div>
               </CardHeader>
               <CardContent className="p-4">
-                <h3 className="font-semibold text-lg mb-2">{product.name}</h3>
+                <h3 className="font-semibold text-lg mb-2">{product.title}</h3>
                 <p className="text-sm text-text-muted mb-4 line-clamp-2">
                   {product.description}
                 </p>
@@ -120,16 +120,16 @@ export function ProductsPage() {
                     ${product.price.toFixed(2)}
                   </div>
                   <div className="text-sm text-text-muted">
-                    {product.quantity > 10 ? `${product.quantity} in stock` : `Only ${product.quantity} left`}
+                    {product.quantityAvailable > 10 ? `${product.quantityAvailable} in stock` : `Only ${product.quantityAvailable} left`}
                   </div>
                 </div>
                 <Button
                   className="w-full"
-                  disabled={product.quantity === 0}
+                  disabled={product.quantityAvailable === 0}
                   size="lg"
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" />
-                  {product.quantity === 0 ? 'Out of Stock' : 'Add to Cart'}
+                  {product.quantityAvailable === 0 ? 'Out of Stock' : 'Add to Cart'}
                 </Button>
               </CardContent>
             </Card>

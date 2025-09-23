@@ -1,9 +1,11 @@
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
 
-interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {}
+interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+  onValueChange?: (value: string) => void;
+}
 
-export function Select({ className, children, ...props }: SelectProps) {
+export function Select({ className, children, onValueChange, ...props }: SelectProps) {
   return (
     <div className="relative">
       <select
@@ -12,6 +14,14 @@ export function Select({ className, children, ...props }: SelectProps) {
           className
         )}
         {...props}
+        onChange={(e) => {
+          if (onValueChange) {
+            onValueChange(e.target.value);
+          }
+          if (props.onChange) {
+            props.onChange(e);
+          }
+        }}
       >
         {children}
       </select>
@@ -42,7 +52,7 @@ interface SelectTriggerProps {
   children: React.ReactNode;
 }
 
-export function SelectTrigger({ className, children }: SelectTriggerProps) {
+export function SelectTrigger({ children }: SelectTriggerProps) {
   return <>{children}</>;
 }
 

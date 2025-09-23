@@ -20,16 +20,16 @@ export function AdminDashboard() {
 
   const { items, loading, error, createItem, updateItem, deleteItem } = useItems();
 
-  const [editingProduct, setEditingProduct] = useState(null);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
 
   // Form state for adding/editing products
   const [productForm, setProductForm] = useState({
-    name: '',
+    title: '',
     price: '',
-    quantity: '',
+    quantityAvailable: '',
     category: '',
     description: '',
-    image: ''
+    imageUrl: ''
   });
 
   const handleProductSubmit = async (e: React.FormEvent) => {
@@ -37,11 +37,12 @@ export function AdminDashboard() {
 
     try {
       const newProduct = {
-        name: productForm.name,
+        title: productForm.title,
         price: parseFloat(productForm.price),
-        quantity: parseInt(productForm.quantity),
+        quantityAvailable: parseInt(productForm.quantityAvailable),
         category: productForm.category,
-        description: productForm.description
+        description: productForm.description,
+        imageUrl: productForm.imageUrl
       };
 
       if (editingProduct) {
@@ -52,12 +53,12 @@ export function AdminDashboard() {
 
       // Reset form
       setProductForm({
-        name: '',
+        title: '',
         price: '',
-        quantity: '',
+        quantityAvailable: '',
         category: '',
         description: '',
-        image: ''
+        imageUrl: ''
       });
       setEditingProduct(null);
     } catch (error) {
@@ -69,12 +70,12 @@ export function AdminDashboard() {
   const handleEditProduct = (product: any) => {
     setEditingProduct(product);
     setProductForm({
-      name: product.name,
+      title: product.title,
       price: product.price.toString(),
-      quantity: product.quantity.toString(),
+      quantityAvailable: product.quantityAvailable.toString(),
       category: product.category,
       description: product.description,
-      image: product.image
+      imageUrl: product.imageUrl || ''
     });
   };
 
@@ -272,17 +273,17 @@ export function AdminDashboard() {
                 <CardHeader className="p-4">
                   <div className="aspect-square bg-muted rounded-lg overflow-hidden mb-3">
                     <img
-                      src={product.image}
-                      alt={product.name}
+                      src={product.imageUrl || '/placeholder-product.jpg'}
+                      alt={product.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                     />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-sm mb-1">{product.name}</h4>
+                    <h4 className="font-semibold text-sm mb-1">{product.title}</h4>
                     <p className="text-xs text-text-muted mb-2 line-clamp-2">{product.description}</p>
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-primary">${product.price}</span>
-                      <span className="text-xs text-text-muted">{product.quantity} in stock</span>
+                      <span className="text-xs text-text-muted">{product.quantityAvailable} in stock</span>
                     </div>
                   </div>
                 </CardHeader>
@@ -322,7 +323,7 @@ export function AdminDashboard() {
       </Card>
 
       {/* Product Form */}
-      {(editingProduct || productForm.name) && (
+      {(editingProduct || productForm.title) && (
         <Card className="mt-8">
           <CardHeader>
             <CardTitle>
@@ -333,12 +334,12 @@ export function AdminDashboard() {
             <form onSubmit={handleProductSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="product-name">Product Name</Label>
+                  <Label htmlFor="product-title">Product Title</Label>
                   <Input
-                    id="product-name"
-                    value={productForm.name}
-                    onChange={(e) => setProductForm({...productForm, name: e.target.value})}
-                    placeholder="Enter product name"
+                    id="product-title"
+                    value={productForm.title}
+                    onChange={(e) => setProductForm({...productForm, title: e.target.value})}
+                    placeholder="Enter product title"
                     required
                   />
                 </div>
@@ -359,8 +360,8 @@ export function AdminDashboard() {
                   <Input
                     id="product-quantity"
                     type="number"
-                    value={productForm.quantity}
-                    onChange={(e) => setProductForm({...productForm, quantity: e.target.value})}
+                    value={productForm.quantityAvailable}
+                    onChange={(e) => setProductForm({...productForm, quantityAvailable: e.target.value})}
                     placeholder="0"
                     required
                   />
@@ -369,7 +370,7 @@ export function AdminDashboard() {
                   <Label htmlFor="product-category">Category</Label>
                   <Select
                     value={productForm.category}
-                    onVolumeChange={(value) => setProductForm({...productForm, category: value})}
+                    onValueChange={(value: string) => setProductForm({...productForm, category: value})}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
@@ -387,8 +388,8 @@ export function AdminDashboard() {
                   <Label htmlFor="product-image">Image URL</Label>
                   <Input
                     id="product-image"
-                    value={productForm.image}
-                    onChange={(e) => setProductForm({...productForm, image: e.target.value})}
+                    value={productForm.imageUrl}
+                    onChange={(e) => setProductForm({...productForm, imageUrl: e.target.value})}
                     placeholder="https://example.com/image.jpg"
                   />
                 </div>
@@ -414,12 +415,12 @@ export function AdminDashboard() {
                   onClick={() => {
                     setEditingProduct(null);
                     setProductForm({
-                      name: '',
+                      title: '',
                       price: '',
-                      quantity: '',
+                      quantityAvailable: '',
                       category: '',
                       description: '',
-                      image: ''
+                      imageUrl: ''
                     });
                   }}
                 >
