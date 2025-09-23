@@ -80,6 +80,30 @@ public class CartController {
         }
     }
 
+    @GetMapping("/{userId}/summary")
+    public ResponseEntity<CartDto> getCartSummary(@PathVariable Long userId) {
+        try {
+            CartDto cartDto = cartService.getCartAsDto(userId);
+            return ResponseEntity.ok(cartDto);
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PostMapping("/{userId}/discount")
+    public ResponseEntity<CartDto> applyDiscountCode(
+            @PathVariable Long userId,
+            @RequestBody @Valid ApplyDiscountRequest request) {
+        try {
+            CartDto cartDto = cartService.applyDiscountCode(userId, request.getDiscountCode());
+            return ResponseEntity.ok(cartDto);
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     @PostMapping("/{userId}/items/{itemId}/increase")
     public ResponseEntity<Cart> increaseItemQuantity(
             @PathVariable Long userId,
@@ -149,6 +173,21 @@ public class CartController {
 
         public void setAmount(int amount) {
             this.amount = amount;
+        }
+    }
+
+    public static class ApplyDiscountRequest {
+        private String discountCode;
+
+        public ApplyDiscountRequest() {
+        }
+
+        public String getDiscountCode() {
+            return discountCode;
+        }
+
+        public void setDiscountCode(String discountCode) {
+            this.discountCode = discountCode;
         }
     }
 }

@@ -32,7 +32,6 @@ public class UserController {
         try {
             User user = userService.register(
                     request.getUsername(),
-                    request.getEmail(),
                     request.getPassword(),
                     request.getFullName());
             UserResponseDTO userResponse = new UserResponseDTO(user);
@@ -48,7 +47,7 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserResponseDTO>> login(
             @RequestBody @Valid UserRequestDTOs.LoginRequest request) {
         try {
-            User user = userService.login(request.getEmailOrUsername(), request.getPassword());
+            User user = userService.login(request.getUsername(), request.getPassword());
             UserResponseDTO userResponse = new UserResponseDTO(user);
             return ResponseEntity.ok(ApiResponse.success(userResponse, "Login successful"));
         } catch (IllegalArgumentException e) {
@@ -75,7 +74,6 @@ public class UserController {
             User user = userService.updateProfile(
                     id,
                     request.getFullName(),
-                    request.getEmail(),
                     request.getAddress(),
                     request.getPhone());
             UserResponseDTO userResponse = new UserResponseDTO(user);

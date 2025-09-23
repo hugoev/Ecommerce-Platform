@@ -11,17 +11,14 @@ import { useNavigate } from "react-router-dom";
 
 export function RegisterPage() {
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const dispatch: AppDispatch = useDispatch();
   const navigate = useNavigate();
   const { status, isAuthenticated, error } = useSelector((state: RootState) => state.auth);
 
   const handleRegister = () => {
-    if (username && email && password) {
-      dispatch(registerUser({ username, email, password, firstName, lastName }));
+    if (username && password) {
+      dispatch(registerUser({ username, password }));
     }
   };
 
@@ -41,23 +38,11 @@ export function RegisterPage() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="username">Username</Label>
-            <Input id="username" type="text" placeholder="username" value={username} onChange={(e) => setUsername(e.target.value)} required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="m@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="firstName">First Name</Label>
-            <Input id="firstName" type="text" placeholder="John" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="lastName">Last Name</Label>
-            <Input id="lastName" type="text" placeholder="Doe" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+            <Input id="username" type="text" placeholder="Choose a username" value={username} onChange={(e) => setUsername(e.target.value)} required />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <Input id="password" type="password" placeholder="Choose a password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}
         </CardContent>

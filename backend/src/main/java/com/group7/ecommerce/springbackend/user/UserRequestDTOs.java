@@ -1,6 +1,5 @@
 package com.group7.ecommerce.springbackend.user;
 
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -12,13 +11,8 @@ public class UserRequestDTOs {
         @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
         private String username;
 
-        @NotBlank(message = "Email is required")
-        @Email(regexp = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$", message = "Invalid email format")
-        private String email;
-
         @NotBlank(message = "Password is required")
-        @Size(min = 8, max = 100, message = "Password must be at least 8 characters long")
-        @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).*$", message = "Password must contain at least one uppercase letter, one lowercase letter, and one digit")
+        @Size(min = 6, max = 100, message = "Password must be at least 6 characters long")
         private String password;
 
         @Size(max = 100, message = "Full name must not exceed 100 characters")
@@ -33,14 +27,6 @@ public class UserRequestDTOs {
 
         public void setUsername(String username) {
             this.username = username;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public void setEmail(String email) {
-            this.email = email;
         }
 
         public String getPassword() {
@@ -61,8 +47,8 @@ public class UserRequestDTOs {
     }
 
     public static class LoginRequest {
-        @NotBlank(message = "Email or username is required")
-        private String emailOrUsername;
+        @NotBlank(message = "Username is required")
+        private String username;
 
         @NotBlank(message = "Password is required")
         private String password;
@@ -70,12 +56,12 @@ public class UserRequestDTOs {
         public LoginRequest() {
         }
 
-        public String getEmailOrUsername() {
-            return emailOrUsername;
+        public String getUsername() {
+            return username;
         }
 
-        public void setEmailOrUsername(String emailOrUsername) {
-            this.emailOrUsername = emailOrUsername;
+        public void setUsername(String username) {
+            this.username = username;
         }
 
         public String getPassword() {
@@ -90,9 +76,6 @@ public class UserRequestDTOs {
     public static class UpdateProfileRequest {
         @Size(max = 100, message = "Full name must not exceed 100 characters")
         private String fullName;
-
-        @Email(regexp = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$", message = "Invalid email format")
-        private String email;
 
         @Size(max = 255, message = "Address must not exceed 255 characters")
         private String address;
@@ -109,14 +92,6 @@ public class UserRequestDTOs {
 
         public void setFullName(String fullName) {
             this.fullName = fullName;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public void setEmail(String email) {
-            this.email = email;
         }
 
         public String getAddress() {
@@ -165,4 +140,3 @@ public class UserRequestDTOs {
         }
     }
 }
-

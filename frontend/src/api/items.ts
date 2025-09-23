@@ -114,27 +114,36 @@ export const itemsApi = {
     pageNumber?: number;
     pageSize?: number;
   }): Promise<{ content: ItemResponse[]; totalElements: number; totalPages: number }> {
-    return apiService.get('/api/items', params as Record<string, string>);
+    return apiService.get<{ success: boolean; data: ItemResponse[]; pagination: any }>('/api/items', params as Record<string, string>)
+      .then(response => ({
+        content: response.data,
+        totalElements: response.data.length,
+        totalPages: 1
+      }));
   },
 
   // Get item by ID
   getById(id: number): Promise<ItemResponse> {
-    return apiService.get(`/api/items/${id}`);
+    return apiService.get<{ success: boolean; data: ItemResponse }>(`/api/items/${id}`)
+      .then(response => response.data);
   },
 
   // Create new item
   create(item: CreateItemData): Promise<ItemResponse> {
-    return apiService.post('/api/items', item);
+    return apiService.post<{ success: boolean; data: ItemResponse }, CreateItemData>('/api/items', item)
+      .then(response => response.data);
   },
 
   // Update existing item
   update(id: number, updates: UpdateItemData): Promise<ItemResponse> {
-    return apiService.put(`/api/items/${id}`, updates);
+    return apiService.put<{ success: boolean; data: ItemResponse }, UpdateItemData>(`/api/items/${id}`, updates)
+      .then(response => response.data);
   },
 
   // Replace entire item
   replace(id: number, item: CreateItemData): Promise<ItemResponse> {
-    return apiService.put(`/api/items/${id}`, item);
+    return apiService.put<{ success: boolean; data: ItemResponse }, CreateItemData>(`/api/items/${id}`, item)
+      .then(response => response.data);
   },
 
   // Delete item

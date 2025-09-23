@@ -5,22 +5,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useAdminOrders } from "@/hooks/useAdminOrders";
 import { useItems } from "@/hooks/useItems";
 import { DollarSign, Edit, Loader2, Package, Plus, ShoppingCart, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 
 export function AdminDashboard() {
-  // Sample data - in real app this would come from API
+  const { items, loading, error, createItem, updateItem, deleteItem } = useItems();
+  const { orders: adminOrders, updateOrderStatus } = useAdminOrders();
+
+  // Calculate stats from real data
   const stats = {
-    totalUsers: 1247,
-    totalProducts: 89,
-    totalOrders: 342,
-    totalRevenue: 45678.90
+    totalUsers: 1247, // This would come from a users API
+    totalProducts: items.length,
+    totalOrders: adminOrders.length,
+    totalRevenue: adminOrders.reduce((sum, order) => sum + order.total, 0)
   };
 
-  const { items, loading, error, createItem, updateItem, deleteItem } = useItems();
-
   const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [editingOrderStatus, setEditingOrderStatus] = useState<{ orderId: number; status: string } | null>(null);
 
   // Form state for adding/editing products
   const [productForm, setProductForm] = useState({
@@ -79,11 +82,19 @@ export function AdminDashboard() {
     });
   };
 
-  const recentOrders = [
-    { id: 1001, customer: "John Doe", amount: 129.99, date: "2024-01-15", status: "Completed" },
-    { id: 1002, customer: "Jane Smith", amount: 89.50, date: "2024-01-14", status: "Processing" },
-    { id: 1003, customer: "Bob Johnson", amount: 234.75, date: "2024-01-13", status: "Shipped" },
-  ];
+  const handleUpdateOrderStatus = async (orderId: number, newStatus: string) => {
+    try {
+      await updateOrderStatus(orderId, newStatus);
+      setEditingOrderStatus(null);
+    } catch (error) {
+      console.error('Failed to update order status:', error);
+    }
+  };
+
+  // Get recent orders (last 5)
+  const recentOrders = adminOrders
+    .sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime())
+    .slice(0, 5);
 
   return (
     <div className="container py-12 px-4 max-w-7xl mx-auto">
@@ -463,12 +474,12 @@ export function AdminDashboard() {
                     </div>
                     <div>
                       <h4 className="font-semibold">Order #{order.id}</h4>
-                      <p className="text-sm text-text-muted">{order.customer} • {order.date}</p>
+                      <p className="text-sm text-text-muted">{order.username} • {new Date(order.orderDate).toLocaleDateString()}</p>
                     </div>
                   </div>
                 </div>
                 <div className="text-right mx-4">
-                  <p className="font-bold text-lg">${order.amount}</p>
+                  <p className="font-bold text-lg">${order.total.toFixed(2)}</p>
                   <span className={`text-xs px-2 py-1 rounded-full ${
                     order.status === 'Completed' ? 'bg-green-100 text-green-800' :
                     order.status === 'Processing' ? 'bg-yellow-100 text-yellow-800' :
@@ -484,13 +495,59 @@ export function AdminDashboard() {
                   <Button variant="outline" size="sm">
                     Edit
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setEditingOrderStatus({ orderId: order.id, status: order.status })}
+                  >
                     Update Status
                   </Button>
                 </div>
               </div>
             ))}
           </div>
+
+          {/* Order Status Update Modal */}
+          {editingOrderStatus && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+                <h3 className="text-lg font-semibold mb-4">Update Order Status</h3>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="status">Status</Label>
+                    <Select 
+                      value={editingOrderStatus.status} 
+                      onValueChange={(value) => setEditingOrderStatus({ ...editingOrderStatus, status: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PENDING">Pending</SelectItem>
+                        <SelectItem value="PROCESSING">Processing</SelectItem>
+                        <SelectItem value="SHIPPED">Shipped</SelectItem>
+                        <SelectItem value="DELIVERED">Delivered</SelectItem>
+                        <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setEditingOrderStatus(null)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={() => handleUpdateOrderStatus(editingOrderStatus.orderId, editingOrderStatus.status)}
+                    >
+                      Update Status
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="mt-6 p-4 bg-muted/50 rounded-lg">
             <h4 className="font-medium mb-3">Order Statistics</h4>

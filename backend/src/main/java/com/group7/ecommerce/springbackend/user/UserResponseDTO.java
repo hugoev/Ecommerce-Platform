@@ -7,7 +7,6 @@ import com.group7.ecommerce.springbackend.user.User.Role;
 public class UserResponseDTO {
     private Long id;
     private String username;
-    private String email;
     private String fullName;
     private Role role;
     private LocalDateTime createdAt;
@@ -21,7 +20,6 @@ public class UserResponseDTO {
     public UserResponseDTO(User user) {
         this.id = user.getId();
         this.username = user.getUsername();
-        this.email = user.getEmail();
         this.fullName = user.getFullName();
         this.role = user.getRole();
         this.createdAt = user.getCreatedAt();
@@ -45,14 +43,6 @@ public class UserResponseDTO {
 
     public void setUsername(String username) {
         this.username = username;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
     }
 
     public String getFullName() {
@@ -103,4 +93,3 @@ public class UserResponseDTO {
         this.phone = phone;
     }
 }
-

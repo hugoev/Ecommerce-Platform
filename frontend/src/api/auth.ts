@@ -1,4 +1,4 @@
-import type { User, RegisterData, LoginCredentials } from '@/types';
+import type { LoginCredentials, RegisterData, User } from '@/types';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -23,10 +23,12 @@ const apiService = {
 
 export const authApi = {
   register(userData: RegisterData): Promise<User> {
-    return apiService.post<User, RegisterData>('/api/auth/register', userData);
+    return apiService.post<{ success: boolean; data: User }, RegisterData>('/api/auth/register', userData)
+      .then(response => response.data);
   },
 
   login(credentials: LoginCredentials): Promise<User> {
-    return apiService.post<User, LoginCredentials>('/api/auth/login', credentials);
+    return apiService.post<{ success: boolean; data: User }, LoginCredentials>('/api/auth/login', credentials)
+      .then(response => response.data);
   },
 };

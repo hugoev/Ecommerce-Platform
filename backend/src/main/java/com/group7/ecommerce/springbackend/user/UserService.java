@@ -22,22 +22,19 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional
-    public User register(String username, String email, String password, String fullName) {
-        // Check if username or email already exists
+    public User register(String username, String password, String fullName) {
+        // Check if username already exists
         if (userRepository.existsByUsername(username)) {
             throw new IllegalArgumentException("Username already exists");
         }
-        if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("Email already exists");
-        }
 
         // Create new user
-        User user = new User(username, email, passwordEncoder.encode(password), fullName);
+        User user = new User(username, passwordEncoder.encode(password), fullName);
         return userRepository.save(user);
     }
 
-    public User login(String emailOrUsername, String password) {
-        Optional<User> userOptional = userRepository.findByEmailOrUsername(emailOrUsername, emailOrUsername);
+    public User login(String username, String password) {
+        Optional<User> userOptional = userRepository.findByUsername(username);
 
         if (userOptional.isEmpty()) {
             throw new IllegalArgumentException("Invalid credentials");
@@ -66,23 +63,12 @@ public class UserService implements UserDetailsService {
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
     }
 
-    public User getByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new NoSuchElementException("User not found"));
-    }
-
     @Transactional
-    public User updateProfile(Long userId, String fullName, String email, String address, String phone) {
+    public User updateProfile(Long userId, String fullName, String address, String phone) {
         User user = getById(userId);
-
-        if (email != null && !email.equals(user.getEmail()) && userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("Email already exists");
-        }
 
         if (fullName != null)
             user.setFullName(fullName);
-        if (email != null)
-            user.setEmail(email);
         if (address != null)
             user.setAddress(address);
         if (phone != null)
@@ -112,7 +98,7 @@ public class UserService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-        
+
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getUsername())
                 .password(user.getPassword())

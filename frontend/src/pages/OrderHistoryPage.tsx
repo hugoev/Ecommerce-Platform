@@ -1,53 +1,21 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useOrders } from "@/hooks/useOrders";
 import { Calendar, DollarSign, Package, User } from "lucide-react";
 import { useState } from "react";
 
 export function OrderHistoryPage() {
   const [sortBy, setSortBy] = useState("date-desc");
-
-  // Sample order data - in real app this would come from API
-  const [orders] = useState([
-    {
-      id: "ORD-2024-001",
-      date: "2024-01-15",
-      status: "Delivered",
-      total: 129.99,
-      items: [
-        { name: "Wireless Headphones", quantity: 1, price: 89.99 },
-        { name: "Cotton T-Shirt", quantity: 2, price: 19.99 }
-      ]
-    },
-    {
-      id: "ORD-2024-002",
-      date: "2024-01-10",
-      status: "Shipped",
-      total: 234.75,
-      items: [
-        { name: "Smart Watch", quantity: 1, price: 199.99 },
-        { name: "Running Shoes", quantity: 1, price: 129.99 }
-      ]
-    },
-    {
-      id: "ORD-2024-003",
-      date: "2024-01-05",
-      status: "Processing",
-      total: 89.50,
-      items: [
-        { name: "Bluetooth Speaker", quantity: 1, price: 59.99 },
-        { name: "Yoga Mat", quantity: 1, price: 39.99 }
-      ]
-    }
-  ]);
+  const { orders, loading, error, fetchOrders } = useOrders();
 
   // Sort orders based on selected criteria
   const sortedOrders = [...orders].sort((a, b) => {
     switch (sortBy) {
       case 'date-desc':
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
+        return new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime();
       case 'date-asc':
-        return new Date(a.date).getTime() - new Date(b.date).getTime();
+        return new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime();
       case 'amount-desc':
         return b.total - a.total;
       case 'amount-asc':
@@ -55,9 +23,7 @@ export function OrderHistoryPage() {
       case 'status':
         return a.status.localeCompare(b.status);
       case 'customer':
-        // For demo purposes, we'll use the order ID as customer identifier
-        // In real app, this would be the actual customer name
-        return a.id.localeCompare(b.id);
+        return a.username.localeCompare(b.username);
       default:
         return 0;
     }
@@ -72,6 +38,29 @@ export function OrderHistoryPage() {
       default: return 'text-gray-600';
     }
   };
+
+  if (loading) {
+    return (
+      <div className="container py-8 px-4 max-w-6xl mx-auto">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold mb-2">Order History</h1>
+          <p className="text-text-muted">Loading your orders...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container py-8 px-4 max-w-6xl mx-auto">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold mb-2">Order History</h1>
+          <p className="text-red-600 mb-4">Error: {error}</p>
+          <Button onClick={fetchOrders}>Try Again</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container py-8 px-4 max-w-6xl mx-auto">
@@ -140,7 +129,7 @@ export function OrderHistoryPage() {
                 <div>
                   <CardTitle className="text-xl">{order.id}</CardTitle>
                   <p className="text-sm text-text-muted mt-1">
-                    Placed on {new Date(order.date).toLocaleDateString('en-US', {
+                    Placed on {new Date(order.orderDate).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric'
@@ -165,9 +154,9 @@ export function OrderHistoryPage() {
                   <div className="space-y-2">
                     {order.items.map((item, index) => (
                       <div key={index} className="flex justify-between items-center py-2 border-b border-border last:border-b-0">
-                        <span className="text-sm">{item.name}</span>
+                        <span className="text-sm">{item.itemName}</span>
                         <span className="text-sm text-text-muted">
-                          {item.quantity} × ${item.price.toFixed(2)}
+                          {item.quantity} × ${item.priceAtPurchase.toFixed(2)}
                         </span>
                       </div>
                     ))}

@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useCart } from "@/hooks/useCart";
 import { useItems } from "@/hooks/useItems";
 import { Loader2, Search, ShoppingCart } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -13,6 +14,11 @@ export function ProductsPage() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
   const { items, loading, error, fetchItems } = useItems();
+  const { addItem } = useCart();
+  const [addingToCart, setAddingToCart] = useState<number | null>(null);
+
+  // For demo purposes, using userId = 1 (you would get this from auth context)
+  const userId = 1;
 
   // Debounce search term
   useEffect(() => {
@@ -44,6 +50,19 @@ export function ProductsPage() {
     } else {
       setSortBy('title');
       setSortDirection('asc');
+    }
+  };
+
+  const handleAddToCart = async (productId: number) => {
+    setAddingToCart(productId);
+    try {
+      await addItem(userId, productId, 1);
+      // You could show a success message here
+    } catch (error) {
+      console.error('Failed to add item to cart:', error);
+      // You could show an error message here
+    } finally {
+      setAddingToCart(null);
     }
   };
 
@@ -125,11 +144,17 @@ export function ProductsPage() {
                 </div>
                 <Button
                   className="w-full"
-                  disabled={product.quantityAvailable === 0}
+                  disabled={product.quantityAvailable === 0 || addingToCart === product.id}
                   size="lg"
+                  onClick={() => handleAddToCart(product.id)}
                 >
-                  <ShoppingCart className="h-4 w-4 mr-2" />
-                  {product.quantityAvailable === 0 ? 'Out of Stock' : 'Add to Cart'}
+                  {addingToCart === product.id ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <ShoppingCart className="h-4 w-4 mr-2" />
+                  )}
+                  {product.quantityAvailable === 0 ? 'Out of Stock' : 
+                   addingToCart === product.id ? 'Adding...' : 'Add to Cart'}
                 </Button>
               </CardContent>
             </Card>

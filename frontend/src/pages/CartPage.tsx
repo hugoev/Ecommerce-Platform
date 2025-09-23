@@ -2,44 +2,77 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useCart } from "@/hooks/useCart";
+import { useItems } from "@/hooks/useItems";
+import { Loader2, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export function CartPage() {
-  // Sample cart data - in real app this would come from state/API
-  const [cartItems, setCartItems] = useState([
-    { id: 1, name: "Product 1", price: 29.99, quantity: 2, image: "https://via.placeholder.com/100x100?text=Product+1" },
-    { id: 2, name: "Product 2", price: 49.99, quantity: 1, image: "https://via.placeholder.com/100x100?text=Product+2" },
-    { id: 3, name: "Product 3", price: 19.99, quantity: 3, image: "https://via.placeholder.com/100x100?text=Product+3" },
-  ]);
-
+  const navigate = useNavigate();
+  const { cart, loading, error, fetchCart, updateQuantity, removeItem, applyDiscount: applyDiscountToCart } = useCart();
+  const { items } = useItems();
   const [discountCode, setDiscountCode] = useState("");
-  const [discountApplied, setDiscountApplied] = useState(false);
+  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
 
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const taxRate = 0.0825; // 8.25% as required
-  const tax = subtotal * taxRate;
-  const discount = discountApplied ? subtotal * 0.1 : 0; // 10% discount for demo
-  const total = subtotal + tax - discount;
+  // For demo purposes, using userId = 1 (you would get this from auth context)
+  const userId = 1;
 
-  const updateQuantity = (id: number, newQuantity: number) => {
-    if (newQuantity <= 0) return;
-    setCartItems(items =>
-      items.map(item =>
-        item.id === id ? { ...item, quantity: newQuantity } : item
-      )
-    );
-  };
+  useEffect(() => {
+    fetchCart(userId);
+  }, [fetchCart, userId]);
 
-  const removeItem = (id: number) => {
-    setCartItems(items => items.filter(item => item.id !== id));
-  };
-
-  const applyDiscount = () => {
-    if (discountCode.toLowerCase() === 'save10') {
-      setDiscountApplied(true);
+  const handleUpdateQuantity = async (itemId: number, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      await removeItem(userId, itemId);
+    } else {
+      await updateQuantity(userId, itemId, newQuantity);
     }
   };
+
+  const handleRemoveItem = async (itemId: number) => {
+    await removeItem(userId, itemId);
+  };
+
+  const handleApplyDiscount = async () => {
+    if (!discountCode.trim()) return;
+    
+    setIsApplyingDiscount(true);
+    try {
+      await applyDiscountToCart(userId, discountCode);
+    } catch (error) {
+      console.error('Failed to apply discount:', error);
+    } finally {
+      setIsApplyingDiscount(false);
+    }
+  };
+
+  // Get item details for display
+  const getItemDetails = (itemId: number) => {
+    return items.find(item => item.id === itemId);
+  };
+
+  if (loading) {
+    return (
+      <div className="container py-8 px-4 max-w-7xl mx-auto">
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Loading cart...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container py-8 px-4 max-w-7xl mx-auto">
+        <div className="text-center py-12">
+          <p className="text-red-600 mb-4">Error: {error}</p>
+          <Button onClick={() => fetchCart(userId)}>Try Again</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container py-8 px-4 max-w-7xl mx-auto">
@@ -49,61 +82,67 @@ export function CartPage() {
         <p className="text-text-muted">Review your items and proceed to checkout</p>
       </div>
 
-      {cartItems.length === 0 ? (
+      {!cart || cart.items.length === 0 ? (
         <div className="text-center py-12">
           <ShoppingBag className="h-16 w-16 mx-auto text-text-muted mb-4" />
           <h3 className="text-xl font-semibold mb-2">Your cart is empty</h3>
           <p className="text-text-muted mb-4">Add some products to get started</p>
-          <Button>Browse Products</Button>
+          <Button onClick={() => navigate('/products')}>Browse Products</Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Cart Items */}
           <div className="lg:col-span-2 space-y-4">
-            {cartItems.map((item) => (
-              <Card key={item.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-4">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-16 h-16 object-cover rounded-lg"
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-semibold">{item.name}</h3>
-                      <p className="text-primary font-medium">${item.price.toFixed(2)}</p>
-                    </div>
-                    <div className="flex items-center space-x-2">
+            {cart.items.map((item) => {
+              const itemDetails = getItemDetails(item.itemId);
+              return (
+                <Card key={item.itemId}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-4">
+                      <img
+                        src={itemDetails?.imageUrl || `https://via.placeholder.com/100x100?text=${item.itemName}`}
+                        alt={item.itemName}
+                        className="w-16 h-16 object-cover rounded-lg"
+                      />
+                      <div className="flex-1">
+                        <h3 className="font-semibold">{item.itemName}</h3>
+                        <p className="text-primary font-medium">${item.price.toFixed(2)}</p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUpdateQuantity(item.itemId, item.quantity - 1)}
+                          className="h-8 w-8"
+                          disabled={loading}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="w-8 text-center">{item.quantity}</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUpdateQuantity(item.itemId, item.quantity + 1)}
+                          className="h-8 w-8"
+                          disabled={loading}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        className="h-8 w-8"
+                        onClick={() => handleRemoveItem(item.itemId)}
+                        className="text-destructive hover:text-destructive"
+                        disabled={loading}
                       >
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                      <span className="w-8 text-center">{item.quantity}</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="h-8 w-8"
-                      >
-                        <Plus className="h-3 w-3" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeItem(item.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
 
           {/* Order Summary */}
@@ -123,12 +162,18 @@ export function CartPage() {
                       value={discountCode}
                       onChange={(e) => setDiscountCode(e.target.value)}
                     />
-                    <Button variant="outline" onClick={applyDiscount}>
-                      Apply
+                    <Button 
+                      variant="outline" 
+                      onClick={handleApplyDiscount}
+                      disabled={isApplyingDiscount || loading}
+                    >
+                      {isApplyingDiscount ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
                     </Button>
                   </div>
-                  {discountApplied && (
-                    <p className="text-sm text-green-600 mt-1">10% discount applied!</p>
+                  {cart.appliedDiscountCode && (
+                    <p className="text-sm text-green-600 mt-1">
+                      Discount code "{cart.appliedDiscountCode}" applied!
+                    </p>
                   )}
                 </div>
 
@@ -136,28 +181,36 @@ export function CartPage() {
                 <div className="space-y-2 pt-4 border-t">
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
-                    <span>${subtotal.toFixed(2)}</span>
+                    <span>${cart.subtotal.toFixed(2)}</span>
                   </div>
-                  {discountApplied && (
+                  {cart.discountAmount > 0 && (
                     <div className="flex justify-between text-green-600">
                       <span>Discount:</span>
-                      <span>-${discount.toFixed(2)}</span>
+                      <span>-${cart.discountAmount.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
                     <span>Tax (8.25%):</span>
-                    <span>${tax.toFixed(2)}</span>
+                    <span>${cart.tax.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between font-bold text-lg pt-2 border-t">
                     <span>Total:</span>
-                    <span>${total.toFixed(2)}</span>
+                    <span>${cart.total.toFixed(2)}</span>
                   </div>
                 </div>
 
-                <Button className="w-full mt-4" size="lg">
+                <Button 
+                  className="w-full mt-4" 
+                  size="lg"
+                  onClick={() => navigate('/checkout')}
+                >
                   Proceed to Checkout
                 </Button>
-                <Button variant="outline" className="w-full">
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => navigate('/products')}
+                >
                   Continue Shopping
                 </Button>
               </CardContent>

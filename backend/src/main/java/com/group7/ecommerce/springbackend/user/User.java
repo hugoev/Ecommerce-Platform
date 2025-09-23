@@ -1,11 +1,17 @@
 package com.group7.ecommerce.springbackend.user;
 
-import jakarta.persistence.*;
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
@@ -22,8 +28,6 @@ public class User {
 
     private String password;
 
-    private String email;
-
     private String firstName;
 
     private String lastName;
@@ -39,9 +43,8 @@ public class User {
 
     private String phone;
 
-    public User(String username, String email, String password, String fullName) {
+    public User(String username, String password, String fullName) {
         this.username = username;
-        this.email = email;
         this.password = password;
         this.firstName = fullName;
         this.role = Role.ROLE_USER;
