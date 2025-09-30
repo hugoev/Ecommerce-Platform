@@ -229,7 +229,116 @@ This Spring Boot application implements a robust e-commerce backend with modern 
 - [ ] Static analysis
 - [ ] Security scanning
 
-## Getting Started
+## 🚀 Quick Start Guide
+
+Get your backend running in under 5 minutes!
+
+### Prerequisites
+
+- **Java 17+** (Download from [OpenJDK](https://openjdk.java.net/))
+- **Maven 3.6+** (Usually included with most IDEs)
+- **Git** for cloning the repository
+
+### 1-Minute Setup
+
+```bash
+# 1. Clone the repository
+git clone <your-repo-url>
+cd spring-backend
+
+# 2. Start with H2 database (no PostgreSQL needed!)
+./mvnw spring-boot:run
+```
+
+That's it! 🎉 Your backend is running at `http://localhost:8080`
+
+### API Testing
+
+Test the API endpoints:
+
+```bash
+# Get all items
+curl http://localhost:8080/api/items
+
+# Get API documentation
+open http://localhost:8080/swagger-ui.html
+```
+
+### Database Options
+
+**For Development (Quick Start):**
+
+- Uses H2 in-memory database
+- No setup required
+- Data resets on restart
+
+**For Production/Testing:**
+
+- Switch to PostgreSQL in `application.properties`
+- Uncomment PostgreSQL configuration
+- Run database migrations with `./mvnw flyway:migrate`
+
+### Environment Configuration
+
+**Development (H2):**
+
+```properties
+# application.properties (default)
+spring.datasource.url=jdbc:h2:mem:testdb
+spring.jpa.hibernate.ddl-auto=create-drop
+spring.flyway.enabled=false
+```
+
+**Production (PostgreSQL):**
+
+```properties
+# application.properties
+spring.datasource.url=jdbc:postgresql://localhost:5432/ecommerce
+spring.jpa.hibernate.ddl-auto=validate
+spring.flyway.enabled=true
+```
+
+### Useful Commands
+
+```bash
+# Run tests
+./mvnw test
+
+# Clean and build
+./mvnw clean install
+
+# Run with specific profile
+./mvnw spring-boot:run -Dspring-boot.run.profiles=prod
+
+# View application logs
+# (Logs will appear in terminal when running)
+
+# Check application health
+curl http://localhost:8080/actuator/health
+```
+
+### Troubleshooting
+
+**Port 8080 already in use?**
+
+```bash
+# Find and kill process using port 8080
+lsof -ti:8080 | xargs kill -9
+
+# Or change port in application.properties
+server.port=8081
+```
+
+**Database connection issues?**
+
+```bash
+# For PostgreSQL issues
+# 1. Check if PostgreSQL is running: sudo systemctl status postgresql
+# 2. Verify credentials in application.properties
+# 3. Test connection: psql -h localhost -U ecommerce_user -d ecommerce
+```
+
+## Getting Started (Detailed)
 
 ### Prerequisites
 
