@@ -150,6 +150,26 @@ export const itemsApi = {
   delete(id: number): Promise<void> {
     return apiService.delete(`/api/items/${id}`);
   },
+
+  // Upload image
+  uploadImage(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return fetch(`${BASE_URL}/api/items/upload-image`, {
+      method: 'POST',
+      body: formData,
+    })
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(error => {
+            throw new Error(error.message || 'Failed to upload image');
+          });
+        }
+        return response.json();
+      })
+      .then(response => response.data);
+  },
 };
 
 // Helper functions to convert between backend and frontend data formats

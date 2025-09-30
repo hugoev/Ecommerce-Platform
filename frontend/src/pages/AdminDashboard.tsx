@@ -1,4 +1,4 @@
-import { itemHelpers } from "@/api/items";
+import { itemHelpers, itemsApi } from "@/api/items";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useAdminOrders } from "@/hooks/useAdminOrders";
 import { useItems } from "@/hooks/useItems";
-import { DollarSign, Edit, Loader2, Package, Plus, ShoppingCart, Trash2, Users } from "lucide-react";
+import { DollarSign, Edit, Loader2, Package, Plus, ShoppingCart, Trash2, Upload, Users } from "lucide-react";
 import { useState } from "react";
 
 export function AdminDashboard() {
@@ -34,6 +34,25 @@ export function AdminDashboard() {
     description: '',
     imageUrl: ''
   });
+
+  // Image upload state
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const imageUrl = await itemsApi.uploadImage(file);
+      setProductForm({ ...productForm, imageUrl });
+    } catch (error) {
+      console.error('Failed to upload image:', error);
+      alert('Failed to upload image. Please try again.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -396,13 +415,49 @@ export function AdminDashboard() {
                   </Select>
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="product-image">Image URL</Label>
-                  <Input
-                    id="product-image"
-                    value={productForm.imageUrl}
-                    onChange={(e) => setProductForm({...productForm, imageUrl: e.target.value})}
-                    placeholder="https://example.com/image.jpg"
-                  />
+                  <Label>Product Image</Label>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Input
+                        id="product-image"
+                        value={productForm.imageUrl}
+                        onChange={(e) => setProductForm({...productForm, imageUrl: e.target.value})}
+                        placeholder="https://example.com/image.jpg or upload below"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <label htmlFor="image-upload" className="cursor-pointer">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={uploadingImage}
+                          className="flex items-center gap-2"
+                        >
+                          {uploadingImage ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-4 w-4" />
+                              Upload
+                            </>
+                          )}
+                        </Button>
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                        id="image-upload"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Upload an image file (JPG, PNG, etc.) or enter an image URL
+                  </p>
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="product-description">Description</Label>
