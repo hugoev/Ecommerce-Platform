@@ -26,11 +26,17 @@ export function useCart(): UseCartState & UseCartActions {
     error: null,
   });
 
-  const fetchCart = useCallback(async (userId: number) => {
+  // Auto-fetch cart when component mounts (for authenticated users)
+  useEffect(() => {
+    // This will be handled by the CartPage component
+    // but we can add logic here if needed
+  }, []);
+
+  const fetchCart = useCallback(async (userId?: number) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
-      const cartResponse = await cartApi.getCartSummary(userId);
+      const cartResponse = await cartApi.getCartSummary();
       const cart = cartHelpers.fromBackend(cartResponse);
 
       setState(prev => ({

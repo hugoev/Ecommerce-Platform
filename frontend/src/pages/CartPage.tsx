@@ -141,6 +141,7 @@ export function CartPage() {
     total: 0,
     lastUpdated: new Date().toISOString()
   });
+
   const hasItems = displayCart && displayCart.items && displayCart.items.length > 0;
 
   // Show loading state when cart is loading for authenticated users

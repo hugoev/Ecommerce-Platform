@@ -3,6 +3,8 @@ package com.group7.ecommerce.springbackend.cart;
 import java.util.NoSuchElementException;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -11,6 +13,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.group7.ecommerce.springbackend.user.User;
 
 import jakarta.validation.Valid;
 
@@ -24,78 +28,96 @@ public class CartController {
         this.cartService = cartService;
     }
 
-    @GetMapping("/{userId}")
-    public ResponseEntity<Cart> getCart(@PathVariable Long userId) {
+    private User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("User not authenticated");
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof User) {
+            return (User) principal;
+        }
+
+        throw new RuntimeException("Unable to get authenticated user");
+    }
+
+    @GetMapping
+    public ResponseEntity<Cart> getCart() {
         try {
-            Cart cart = cartService.getCart(userId);
+            User user = getCurrentUser();
+            Cart cart = cartService.getCart(user.getId());
             return ResponseEntity.ok(cart);
         } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();
         }
     }
 
-    @PostMapping("/{userId}/items/{itemId}")
+    @PostMapping("/items/{itemId}")
     public ResponseEntity<Cart> addItemToCart(
-            @PathVariable Long userId,
             @PathVariable Long itemId,
             @RequestBody @Valid AddItemRequest request) {
         try {
-            Cart cart = cartService.addItemToCart(userId, itemId, request.getQuantity());
+            User user = getCurrentUser();
+            Cart cart = cartService.addItemToCart(user.getId(), itemId, request.getQuantity());
             return ResponseEntity.ok(cart);
         } catch (NoSuchElementException | IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
-    @PutMapping("/{userId}/items/{itemId}")
+    @PutMapping("/items/{itemId}")
     public ResponseEntity<Cart> updateItemQuantity(
-            @PathVariable Long userId,
             @PathVariable Long itemId,
             @RequestBody @Valid UpdateQuantityRequest request) {
         try {
-            Cart cart = cartService.updateItemQuantity(userId, itemId, request.getQuantity());
+            User user = getCurrentUser();
+            Cart cart = cartService.updateItemQuantity(user.getId(), itemId, request.getQuantity());
             return ResponseEntity.ok(cart);
         } catch (NoSuchElementException | IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
-    @DeleteMapping("/{userId}/items/{itemId}")
-    public ResponseEntity<Cart> removeItemFromCart(@PathVariable Long userId, @PathVariable Long itemId) {
+    @DeleteMapping("/items/{itemId}")
+    public ResponseEntity<Cart> removeItemFromCart(@PathVariable Long itemId) {
         try {
-            Cart cart = cartService.removeItemFromCart(userId, itemId);
+            User user = getCurrentUser();
+            Cart cart = cartService.removeItemFromCart(user.getId(), itemId);
             return ResponseEntity.ok(cart);
         } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();
         }
     }
 
-    @DeleteMapping("/{userId}")
-    public ResponseEntity<Void> clearCart(@PathVariable Long userId) {
+    @DeleteMapping
+    public ResponseEntity<Void> clearCart() {
         try {
-            cartService.clearCart(userId);
+            User user = getCurrentUser();
+            cartService.clearCart(user.getId());
             return ResponseEntity.ok().build();
         } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();
         }
     }
 
-    @GetMapping("/{userId}/summary")
-    public ResponseEntity<CartDto> getCartSummary(@PathVariable Long userId) {
+    @GetMapping("/summary")
+    public ResponseEntity<CartDto> getCartSummary() {
         try {
-            CartDto cartDto = cartService.getCartAsDto(userId);
+            User user = getCurrentUser();
+            CartDto cartDto = cartService.getCartAsDto(user.getId());
             return ResponseEntity.ok(cartDto);
         } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();
         }
     }
 
-    @PostMapping("/{userId}/discount")
+    @PostMapping("/discount")
     public ResponseEntity<CartDto> applyDiscountCode(
-            @PathVariable Long userId,
             @RequestBody @Valid ApplyDiscountRequest request) {
         try {
-            CartDto cartDto = cartService.applyDiscountCode(userId, request.getDiscountCode());
+            User user = getCurrentUser();
+            CartDto cartDto = cartService.applyDiscountCode(user.getId(), request.getDiscountCode());
             return ResponseEntity.ok(cartDto);
         } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();
@@ -104,26 +126,26 @@ public class CartController {
         }
     }
 
-    @PostMapping("/{userId}/items/{itemId}/increase")
+    @PostMapping("/items/{itemId}/increase")
     public ResponseEntity<Cart> increaseItemQuantity(
-            @PathVariable Long userId,
             @PathVariable Long itemId,
             @RequestBody @Valid ChangeQuantityRequest request) {
         try {
-            Cart cart = cartService.increaseItemQuantity(userId, itemId, request.getAmount());
+            User user = getCurrentUser();
+            Cart cart = cartService.increaseItemQuantity(user.getId(), itemId, request.getAmount());
             return ResponseEntity.ok(cart);
         } catch (NoSuchElementException | IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
-    @PostMapping("/{userId}/items/{itemId}/decrease")
+    @PostMapping("/items/{itemId}/decrease")
     public ResponseEntity<Cart> decreaseItemQuantity(
-            @PathVariable Long userId,
             @PathVariable Long itemId,
             @RequestBody @Valid ChangeQuantityRequest request) {
         try {
-            Cart cart = cartService.decreaseItemQuantity(userId, itemId, request.getAmount());
+            User user = getCurrentUser();
+            Cart cart = cartService.decreaseItemQuantity(user.getId(), itemId, request.getAmount());
             return ResponseEntity.ok(cart);
         } catch (NoSuchElementException | IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();

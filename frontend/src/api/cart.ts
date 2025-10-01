@@ -147,15 +147,15 @@ const apiService = {
 
 export const cartApi = {
   // Get cart summary with calculated totals
-  getCartSummary(userId: number): Promise<CartResponse> {
-    return apiService.get<CartResponse>(`/api/cart/${userId}/summary`);
+  getCartSummary(): Promise<CartResponse> {
+    return apiService.get<CartResponse>(`/api/cart/summary`);
   },
 
   // Add item to cart (handles both authenticated and guest users)
   async addItem(userId: number, itemId: number, quantity: number): Promise<void> {
     try {
       // Try authenticated cart first
-      await apiService.post<void, AddItemRequest>(`/api/cart/${userId}/items/${itemId}`, { quantity });
+      await apiService.post<void, AddItemRequest>(`/api/cart/items/${itemId}`, { quantity });
     } catch (error) {
       // If 401 Unauthorized, fall back to guest cart
       if (error instanceof Error && error.message.includes('Unauthorized')) {
@@ -169,32 +169,32 @@ export const cartApi = {
 
   // Update item quantity
   updateQuantity(userId: number, itemId: number, quantity: number): Promise<void> {
-    return apiService.put<void, UpdateQuantityRequest>(`/api/cart/${userId}/items/${itemId}`, { quantity });
+    return apiService.put<void, UpdateQuantityRequest>(`/api/cart/items/${itemId}`, { quantity });
   },
 
   // Remove item from cart
   removeItem(userId: number, itemId: number): Promise<void> {
-    return apiService.delete(`/api/cart/${userId}/items/${itemId}`);
+    return apiService.delete(`/api/cart/items/${itemId}`);
   },
 
   // Clear entire cart
   clearCart(userId: number): Promise<void> {
-    return apiService.delete(`/api/cart/${userId}`);
+    return apiService.delete(`/api/cart`);
   },
 
   // Increase item quantity
   increaseQuantity(userId: number, itemId: number, amount: number): Promise<void> {
-    return apiService.post<void, ChangeQuantityRequest>(`/api/cart/${userId}/items/${itemId}/increase`, { amount });
+    return apiService.post<void, ChangeQuantityRequest>(`/api/cart/items/${itemId}/increase`, { amount });
   },
 
   // Decrease item quantity
   decreaseQuantity(userId: number, itemId: number, amount: number): Promise<void> {
-    return apiService.post<void, ChangeQuantityRequest>(`/api/cart/${userId}/items/${itemId}/decrease`, { amount });
+    return apiService.post<void, ChangeQuantityRequest>(`/api/cart/items/${itemId}/decrease`, { amount });
   },
 
   // Apply discount code
   applyDiscount(userId: number, discountCode: string): Promise<CartResponse> {
-    return apiService.post<CartResponse, ApplyDiscountRequest>(`/api/cart/${userId}/discount`, { discountCode });
+    return apiService.post<CartResponse, ApplyDiscountRequest>(`/api/cart/discount`, { discountCode });
   },
 
   // Guest cart operations (for when user is not logged in)
