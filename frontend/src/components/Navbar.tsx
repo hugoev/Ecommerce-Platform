@@ -4,11 +4,64 @@ import { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
+import { guestCartUtils } from '@/utils/guestCart';
+import { useCart } from '@/hooks/useCart';
 
 const Navbar = () => {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const { cart } = useCart();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [guestCartItemCount, setGuestCartItemCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Get cart item count for both authenticated and guest users
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      // For authenticated users, use the cart from useCart hook
+      setGuestCartItemCount(cart?.items?.length || 0);
+    } else {
+      // For guest users, use guest cart utils
+      const guestCart = guestCartUtils.getCartSummary();
+      setGuestCartItemCount(guestCart?.items?.length || 0);
+    }
+  }, [isAuthenticated, user, cart]);
+
+  // Listen for cart updates from other components and storage changes
+  useEffect(() => {
+    const handleCartUpdate = (event: CustomEvent) => {
+      if (isAuthenticated && user?.id && event.detail?.userId === user.id) {
+        // For authenticated users, the cart hook should automatically update
+        // But we can trigger a re-render by updating the state
+        setGuestCartItemCount(prev => prev); // Trigger re-render
+      }
+    };
+
+    const handleGuestCartUpdate = () => {
+      if (!isAuthenticated || !user?.id) {
+        const guestCart = guestCartUtils.getCartSummary();
+        setGuestCartItemCount(guestCart?.items?.length || 0);
+      }
+    };
+
+    const handleStorageChange = () => {
+      if (!isAuthenticated || !user?.id) {
+        const guestCart = guestCartUtils.getCartSummary();
+        setGuestCartItemCount(guestCart?.items?.length || 0);
+      }
+    };
+
+    window.addEventListener('cartUpdated', handleCartUpdate as EventListener);
+    window.addEventListener('guestCartUpdated', handleGuestCartUpdate);
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('cartUpdated', handleCartUpdate as EventListener);
+      window.removeEventListener('guestCartUpdated', handleGuestCartUpdate);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [isAuthenticated, user]);
+
+  const cartItemCount = guestCartItemCount;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -32,8 +85,13 @@ const Navbar = () => {
             <Link to="/products" className="text-sm font-medium text-text-muted hover:text-foreground">
               Products
             </Link>
-            <Link to="/cart" className="text-sm font-medium text-text-muted hover:text-foreground">
+            <Link to="/cart" className="relative text-sm font-medium text-text-muted hover:text-foreground">
               Cart
+              {cartItemCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                  {cartItemCount > 99 ? '99+' : cartItemCount}
+                </span>
+              )}
             </Link>
             {isAuthenticated ? (
               <div className="relative" ref={dropdownRef}>

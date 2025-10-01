@@ -17,6 +17,7 @@ export function ProductsPage() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   const { items, loading, error, fetchItems } = useItems();
   const { addItem } = useCart();
@@ -65,10 +66,16 @@ export function ProductsPage() {
       if (userId) {
         // User is logged in - use authenticated cart
         await addItem(userId, product.id, 1);
-        // You could show a success message here
+        // Dispatch custom event to notify other components
+        window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { userId } }));
+        // Show success message
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 3000);
       } else {
         // User is not logged in - use guest cart
         guestCartUtils.addItem(product.id, product.title, product.price, 1);
+        // Dispatch custom event for guest cart updates
+        window.dispatchEvent(new CustomEvent('guestCartUpdated'));
         // Show login modal to encourage login
         setShowLoginModal(true);
       }
@@ -87,6 +94,26 @@ export function ProductsPage() {
 
   return (
     <div className="container py-8 px-4 max-w-7xl mx-auto">
+      {/* Success Message */}
+      {showSuccessMessage && (
+        <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-center justify-between">
+          <div className="flex items-center">
+            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            Item added to cart successfully!
+          </div>
+          <button
+            onClick={() => setShowSuccessMessage(false)}
+            className="text-green-700 hover:text-green-900"
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {/* Search and Sort */}
       <div className="mb-10">
         <div className="relative max-w-lg mx-auto mb-6">

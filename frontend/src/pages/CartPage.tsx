@@ -39,6 +39,30 @@ export function CartPage() {
     }
   }, [fetchCart, userId]);
 
+  // Listen for cart updates from other components
+  useEffect(() => {
+    const handleCartUpdate = (event: CustomEvent) => {
+      if (userId && event.detail?.userId === userId) {
+        fetchCart(userId);
+      }
+    };
+
+    const handleGuestCartUpdate = () => {
+      if (!userId) {
+        const guestCartData = guestCartUtils.getCartSummary();
+        setGuestCart(guestCartData);
+      }
+    };
+
+    window.addEventListener('cartUpdated', handleCartUpdate as EventListener);
+    window.addEventListener('guestCartUpdated', handleGuestCartUpdate);
+
+    return () => {
+      window.removeEventListener('cartUpdated', handleCartUpdate as EventListener);
+      window.removeEventListener('guestCartUpdated', handleGuestCartUpdate);
+    };
+  }, [fetchCart, userId]);
+
   const handleUpdateQuantity = async (itemId: number, newQuantity: number) => {
     if (userId) {
       // User is logged in - use authenticated cart
