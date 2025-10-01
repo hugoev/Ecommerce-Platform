@@ -91,21 +91,21 @@ const apiService = {
 };
 
 export const ordersApi = {
-  // Place a new order
-  placeOrder(): Promise<OrderResponse> {
-    return apiService.post<{ success: boolean; data: OrderResponse }, {}>('/api/orders/place', {})
+  // Place a new order (requires user ID)
+  placeOrder(userId: number): Promise<OrderResponse> {
+    return apiService.post<{ success: boolean; data: OrderResponse }, {}>(`/api/orders/${userId}/place`, {})
       .then(response => response.data);
   },
 
-  // Get user's orders
-  getUserOrders(): Promise<OrderResponse[]> {
-    return apiService.get<{ success: boolean; data: OrderResponse[] }>('/api/orders')
+  // Get user's orders (requires user ID)
+  getUserOrders(userId: number): Promise<OrderResponse[]> {
+    return apiService.get<{ success: boolean; data: OrderResponse[] }>(`/api/orders/${userId}`)
       .then(response => response.data);
   },
 
-  // Get order by ID
-  getOrderById(orderId: number): Promise<OrderResponse> {
-    return apiService.get<{ success: boolean; data: OrderResponse }>(`/api/orders/${orderId}`)
+  // Get order by ID (requires user ID for security)
+  getOrderById(userId: number, orderId: number): Promise<OrderResponse> {
+    return apiService.get<{ success: boolean; data: OrderResponse }>(`/api/orders/${userId}/${orderId}`)
       .then(response => response.data);
   },
 
@@ -118,6 +118,12 @@ export const ordersApi = {
   // Get all orders (admin only)
   getAllOrders(): Promise<OrderResponse[]> {
     return apiService.get<{ success: boolean; data: OrderResponse[] }>('/api/orders/admin/all')
+      .then(response => response.data);
+  },
+
+  // Get orders by status (admin only)
+  getOrdersByStatus(status: string): Promise<OrderResponse[]> {
+    return apiService.get<{ success: boolean; data: OrderResponse[] }>(`/api/orders/admin/status/${status}`)
       .then(response => response.data);
   },
 };

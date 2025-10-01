@@ -1,4 +1,6 @@
 
+import { guestCartUtils } from '@/utils/guestCart';
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 export interface CartItemResponse {
@@ -149,9 +151,20 @@ export const cartApi = {
     return apiService.get<CartResponse>(`/api/cart/${userId}/summary`);
   },
 
-  // Add item to cart
-  addItem(userId: number, itemId: number, quantity: number): Promise<void> {
-    return apiService.post<void, AddItemRequest>(`/api/cart/${userId}/items/${itemId}`, { quantity });
+  // Add item to cart (handles both authenticated and guest users)
+  async addItem(userId: number, itemId: number, quantity: number): Promise<void> {
+    try {
+      // Try authenticated cart first
+      await apiService.post<void, AddItemRequest>(`/api/cart/${userId}/items/${itemId}`, { quantity });
+    } catch (error) {
+      // If 401 Unauthorized, fall back to guest cart
+      if (error instanceof Error && error.message.includes('Unauthorized')) {
+        // For guest cart, we need item details, but we don't have them here
+        // This should be handled at the component level where we have item details
+        throw new Error('LOGIN_REQUIRED');
+      }
+      throw error;
+    }
   },
 
   // Update item quantity
@@ -182,6 +195,23 @@ export const cartApi = {
   // Apply discount code
   applyDiscount(userId: number, discountCode: string): Promise<CartResponse> {
     return apiService.post<CartResponse, ApplyDiscountRequest>(`/api/cart/${userId}/discount`, { discountCode });
+  },
+
+  // Guest cart operations (for when user is not logged in)
+  addItemToGuestCart(itemId: number, itemName: string, price: number, quantity: number): void {
+    guestCartUtils.addItem(itemId, itemName, price, quantity);
+  },
+
+  getGuestCart(): any {
+    return guestCartUtils.getCartSummary();
+  },
+
+  clearGuestCart(): void {
+    guestCartUtils.clearCart();
+  },
+
+  hasGuestCartItems(): boolean {
+    return guestCartUtils.hasItems();
   },
 };
 

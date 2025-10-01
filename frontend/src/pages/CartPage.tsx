@@ -1,10 +1,13 @@
 import type { RootState } from "@/app/store";
+import { LoginModal } from "@/components/LoginModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCart } from "@/hooks/useCart";
 import { useItems } from "@/hooks/useItems";
+import { guestCartUtils, type GuestCartItem } from "@/utils/guestCart";
+import { type CartItemResponse } from "@/api/cart";
 import { Loader2, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
@@ -16,6 +19,11 @@ export function CartPage() {
   const { items } = useItems();
   const [discountCode, setDiscountCode] = useState("");
   const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [guestCart, setGuestCart] = useState<any>(null);
+
+  // Union type for cart items (authenticated or guest)
+  type CartItem = CartItemResponse | GuestCartItem;
 
   // Get current user from auth state
   const user = useSelector((state: RootState) => state.auth.user);
@@ -24,33 +32,67 @@ export function CartPage() {
   useEffect(() => {
     if (userId) {
       fetchCart(userId);
+    } else {
+      // Load guest cart if user is not logged in
+      const guestCartData = guestCartUtils.getCartSummary();
+      setGuestCart(guestCartData);
     }
   }, [fetchCart, userId]);
 
   const handleUpdateQuantity = async (itemId: number, newQuantity: number) => {
-    if (!userId) return;
-    if (newQuantity <= 0) {
-      await removeItem(userId, itemId);
+    if (userId) {
+      // User is logged in - use authenticated cart
+      if (newQuantity <= 0) {
+        await removeItem(userId, itemId);
+      } else {
+        await updateQuantity(userId, itemId, newQuantity);
+      }
     } else {
-      await updateQuantity(userId, itemId, newQuantity);
+      // User is not logged in - use guest cart
+      if (newQuantity <= 0) {
+        const updatedCart = guestCartUtils.removeItem(itemId);
+        setGuestCart(updatedCart);
+      } else {
+        const updatedCart = guestCartUtils.updateQuantity(itemId, newQuantity);
+        setGuestCart(updatedCart);
+      }
     }
   };
 
   const handleRemoveItem = async (itemId: number) => {
-    if (!userId) return;
-    await removeItem(userId, itemId);
+    if (userId) {
+      // User is logged in - use authenticated cart
+      await removeItem(userId, itemId);
+    } else {
+      // User is not logged in - use guest cart
+      const updatedCart = guestCartUtils.removeItem(itemId);
+      setGuestCart(updatedCart);
+    }
   };
 
   const handleApplyDiscount = async () => {
-    if (!userId || !discountCode.trim()) return;
-    
-    setIsApplyingDiscount(true);
-    try {
-      await applyDiscountToCart(userId, discountCode);
-    } catch (error) {
-      console.error('Failed to apply discount:', error);
-    } finally {
-      setIsApplyingDiscount(false);
+    if (!discountCode.trim()) return;
+
+    if (userId) {
+      // User is logged in - use authenticated cart
+      setIsApplyingDiscount(true);
+      try {
+        await applyDiscountToCart(userId, discountCode);
+      } catch (error) {
+        console.error('Failed to apply discount:', error);
+      } finally {
+        setIsApplyingDiscount(false);
+      }
+    } else {
+      // User is not logged in - use guest cart
+      setIsApplyingDiscount(true);
+      try {
+        // For guest cart, we need to apply discount manually
+        // This is a simplified implementation
+        setShowLoginModal(true);
+      } finally {
+        setIsApplyingDiscount(false);
+      }
     }
   };
 
@@ -59,13 +101,25 @@ export function CartPage() {
     return items.find(item => item.id === itemId);
   };
 
-  if (!userId) {
+  // Determine which cart to display
+  const displayCart = userId ? cart : (guestCart || {
+    items: [],
+    subtotal: 0,
+    tax: 0,
+    discountAmount: 0,
+    total: 0,
+    lastUpdated: new Date().toISOString()
+  });
+  const hasItems = displayCart && displayCart.items && displayCart.items.length > 0;
+
+  if (!hasItems) {
     return (
       <div className="container py-8 px-4 max-w-7xl mx-auto">
         <div className="text-center py-12">
-          <h3 className="text-xl font-semibold mb-2">Please log in to view your cart</h3>
-          <p className="text-text-muted mb-4">You need to be logged in to access your shopping cart</p>
-          <Button onClick={() => navigate('/login')}>Go to Login</Button>
+          <ShoppingBag className="h-16 w-16 mx-auto text-text-muted mb-4" />
+          <h3 className="text-xl font-semibold mb-2">Your cart is empty</h3>
+          <p className="text-text-muted mb-4">Add some products to get started</p>
+          <Button onClick={() => navigate('/products')}>Browse Products</Button>
         </div>
       </div>
     );
@@ -87,7 +141,7 @@ export function CartPage() {
       <div className="container py-8 px-4 max-w-7xl mx-auto">
         <div className="text-center py-12">
           <p className="text-red-600 mb-4">Error: {error}</p>
-          <Button onClick={() => fetchCart(userId)}>Try Again</Button>
+          <Button onClick={() => userId ? fetchCart(userId) : window.location.reload()}>Try Again</Button>
         </div>
       </div>
     );
@@ -101,7 +155,7 @@ export function CartPage() {
         <p className="text-text-muted">Review your items and proceed to checkout</p>
       </div>
 
-      {!cart || cart.items.length === 0 ? (
+      {!hasItems ? (
         <div className="text-center py-12">
           <ShoppingBag className="h-16 w-16 mx-auto text-text-muted mb-4" />
           <h3 className="text-xl font-semibold mb-2">Your cart is empty</h3>
@@ -112,7 +166,7 @@ export function CartPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Cart Items */}
           <div className="lg:col-span-2 space-y-4">
-            {cart.items.map((item) => {
+            {displayCart.items.map((item: CartItem) => {
               const itemDetails = getItemDetails(item.itemId);
               return (
                 <Card key={item.itemId}>
@@ -189,7 +243,7 @@ export function CartPage() {
                       {isApplyingDiscount ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
                     </Button>
                   </div>
-                  {cart.appliedDiscountCode && (
+                  {userId && cart?.appliedDiscountCode && (
                     <p className="text-sm text-green-600 mt-1">
                       Discount code "{cart.appliedDiscountCode}" applied!
                     </p>
@@ -200,28 +254,34 @@ export function CartPage() {
                 <div className="space-y-2 pt-4 border-t">
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
-                    <span>${cart.subtotal.toFixed(2)}</span>
+                    <span>${displayCart.subtotal.toFixed(2)}</span>
                   </div>
-                  {cart.discountAmount > 0 && (
+                  {displayCart.discountAmount > 0 && (
                     <div className="flex justify-between text-green-600">
                       <span>Discount:</span>
-                      <span>-${cart.discountAmount.toFixed(2)}</span>
+                      <span>-${displayCart.discountAmount.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
                     <span>Tax (8.25%):</span>
-                    <span>${cart.tax.toFixed(2)}</span>
+                    <span>${displayCart.tax.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between font-bold text-lg pt-2 border-t">
                     <span>Total:</span>
-                    <span>${cart.total.toFixed(2)}</span>
+                    <span>${displayCart.total.toFixed(2)}</span>
                   </div>
                 </div>
 
-                <Button 
-                  className="w-full mt-4" 
+                <Button
+                  className="w-full mt-4"
                   size="lg"
-                  onClick={() => navigate('/checkout')}
+                  onClick={() => {
+                    if (userId) {
+                      navigate('/checkout');
+                    } else {
+                      setShowLoginModal(true);
+                    }
+                  }}
                 >
                   Proceed to Checkout
                 </Button>
@@ -237,6 +297,17 @@ export function CartPage() {
           </div>
         </div>
       )}
+
+      {/* Login Modal for guest users */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLoginSuccess={() => {
+          // Refresh the page to load authenticated cart
+          window.location.reload();
+        }}
+        message="Please log in to proceed with your purchase and save your cart items."
+      />
     </div>
   );
 }

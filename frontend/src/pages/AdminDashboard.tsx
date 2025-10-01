@@ -1,22 +1,29 @@
 import { itemHelpers, itemsApi } from "@/api/items";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useAdminDiscounts } from "@/hooks/useAdminDiscounts";
 import { useAdminOrders } from "@/hooks/useAdminOrders";
+import { useAdminUsers } from "@/hooks/useAdminUsers";
 import { useItems } from "@/hooks/useItems";
+import { useSales } from "@/hooks/useSales";
 import { DollarSign, Edit, Loader2, Package, Plus, ShoppingCart, Trash2, Upload, Users } from "lucide-react";
 import { useState } from "react";
 
 export function AdminDashboard() {
   const { items, loading, error, createItem, updateItem, deleteItem } = useItems();
   const { orders: adminOrders, updateOrderStatus } = useAdminOrders();
+  const { users } = useAdminUsers();
+  const { discountCodes, createDiscountCode } = useAdminDiscounts();
+  const { salesItems, createSalesItem } = useSales();
 
   // Calculate stats from real data
   const stats = {
-    totalUsers: 1247, // This would come from a users API
+    totalUsers: users.length,
     totalProducts: items.length,
     totalOrders: adminOrders.length,
     totalRevenue: adminOrders.reduce((sum, order) => sum + order.total, 0)
@@ -34,6 +41,34 @@ export function AdminDashboard() {
     description: '',
     imageUrl: ''
   });
+
+  // Form state for user management
+  const [userSearch, setUserSearch] = useState('');
+  const [selectedUserAction, setSelectedUserAction] = useState('');
+
+  // Form state for discount codes
+  const [discountForm, setDiscountForm] = useState({
+    code: '',
+    discountType: 'percentage',
+    discountValue: '',
+    expiryDate: ''
+  });
+
+  // Form state for sales/promotions
+  const [salesForm, setSalesForm] = useState({
+    name: '',
+    discount: '',
+    productSelection: 'all',
+    duration: ''
+  });
+
+  // Order management state
+  const [orderSortBy, setOrderSortBy] = useState('date-desc');
+  const [orderFilterStatus, setOrderFilterStatus] = useState('all');
+
+  // Dialog states
+  const [showDiscountDialog, setShowDiscountDialog] = useState(false);
+  const [showSalesDialog, setShowSalesDialog] = useState(false);
 
   // Image upload state
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -110,10 +145,104 @@ export function AdminDashboard() {
     }
   };
 
-  // Get recent orders (last 5)
-  const recentOrders = adminOrders
-    .sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime())
-    .slice(0, 5);
+  const handleCreateDiscountCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const discountPercentage = discountForm.discountType === 'percentage'
+        ? parseFloat(discountForm.discountValue)
+        : (parseFloat(discountForm.discountValue) / 100); // Convert fixed amount to percentage
+
+      await createDiscountCode({
+        code: discountForm.code,
+        discountPercentage,
+        expiryDate: discountForm.expiryDate || undefined
+      });
+
+      setDiscountForm({
+        code: '',
+        discountType: 'percentage',
+        discountValue: '',
+        expiryDate: ''
+      });
+      setShowDiscountDialog(false);
+    } catch (error) {
+      console.error('Failed to create discount code:', error);
+    }
+  };
+
+  const handleCreateSale = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      // For now, we'll create a sale for the first item as an example
+      // In a real implementation, you'd select specific items or categories
+      if (items.length > 0) {
+        const discountPercentage = parseFloat(salesForm.discount);
+        const salePrice = items[0].price * (1 - discountPercentage / 100);
+
+        await createSalesItem({
+          itemId: items[0].id,
+          salePrice,
+          saleStartDate: new Date().toISOString(),
+          saleEndDate: new Date(Date.now() + parseInt(salesForm.duration) * 24 * 60 * 60 * 1000).toISOString()
+        });
+
+        setSalesForm({
+          name: '',
+          discount: '',
+          productSelection: 'all',
+          duration: ''
+        });
+        setShowSalesDialog(false);
+      }
+    } catch (error) {
+      console.error('Failed to create sale:', error);
+    }
+  };
+
+  const handleUserAction = async () => {
+    if (!selectedUserAction || !userSearch) return;
+
+    // For now, we'll just log the action
+    // In a real implementation, this would perform the selected action on the searched user
+    console.log('User action:', selectedUserAction, 'on user:', userSearch);
+    alert(`Action "${selectedUserAction}" would be performed on user "${userSearch}"`);
+  };
+
+  // Get filtered and sorted orders
+  const getFilteredAndSortedOrders = () => {
+    let filteredOrders = adminOrders;
+
+    // Filter by status
+    if (orderFilterStatus !== 'all') {
+      filteredOrders = adminOrders.filter(order => order.status === orderFilterStatus);
+    }
+
+    // Sort orders
+    const sortedOrders = [...filteredOrders].sort((a, b) => {
+      switch (orderSortBy) {
+        case 'date-desc':
+          return new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime();
+        case 'date-asc':
+          return new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime();
+        case 'customer':
+          return a.username.localeCompare(b.username);
+        case 'amount-desc':
+          return b.total - a.total;
+        case 'amount-asc':
+          return a.total - b.total;
+        case 'status':
+          return a.status.localeCompare(b.status);
+        default:
+          return 0;
+      }
+    });
+
+    return sortedOrders.slice(0, 10); // Show top 10 orders
+  };
+
+  const filteredOrders = getFilteredAndSortedOrders();
 
   return (
     <div className="container py-12 px-4 max-w-7xl mx-auto">
@@ -175,26 +304,59 @@ export function AdminDashboard() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="search-users">Search Users</Label>
-              <Input id="search-users" placeholder="Search by name or email" />
+              <Input
+                id="search-users"
+                placeholder="Search by name or email"
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="user-action">Action</Label>
-              <Select id="user-action">
-                <SelectItem value="view">View Profile</SelectItem>
-                <SelectItem value="edit">Edit User</SelectItem>
-                <SelectItem value="deactivate">Deactivate Account</SelectItem>
-                <SelectItem value="delete">Delete Account</SelectItem>
+              <Select value={selectedUserAction} onValueChange={setSelectedUserAction}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select action" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="view">View Profile</SelectItem>
+                  <SelectItem value="edit">Edit User</SelectItem>
+                  <SelectItem value="deactivate">Deactivate Account</SelectItem>
+                  <SelectItem value="delete">Delete Account</SelectItem>
+                </SelectContent>
               </Select>
             </div>
-            <Button className="w-full">Apply Action</Button>
+            <Button className="w-full" onClick={handleUserAction}>Apply Action</Button>
 
-            <div className="mt-6 p-3 bg-muted rounded-lg">
-              <h4 className="font-medium mb-2">Recent Users</h4>
-              <div className="space-y-1 text-sm">
-                <p>• John Doe - john@example.com</p>
-                <p>• Jane Smith - jane@example.com</p>
-                <p>• Bob Johnson - bob@example.com</p>
-              </div>
+            <div className="mt-6">
+              <h4 className="font-medium mb-3">Users ({users.length})</h4>
+              {users.length === 0 ? (
+                <div className="text-center text-muted-foreground py-4">
+                  No users found.
+                </div>
+              ) : (
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {users.slice(0, 5).map((user) => (
+                    <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex-1">
+                        <div className="font-medium">{user.fullName}</div>
+                        <div className="text-sm text-muted-foreground">{user.username}</div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm">{user.role.replace('ROLE_', '')}</span>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {user.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="outline">View</Button>
+                          <Button size="sm" variant="outline">Edit</Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -204,35 +366,149 @@ export function AdminDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               Discount Codes
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Code
-              </Button>
+              <DialogTrigger onClick={() => setShowDiscountDialog(true)}>
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Code
+                </Button>
+              </DialogTrigger>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="discount-code">Discount Code</Label>
-              <Input id="discount-code" placeholder="e.g., SAVE20" />
+            <div className="max-h-64 overflow-y-auto space-y-2">
+              {discountCodes.map((discount) => (
+                <div key={discount.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex-1">
+                    <div className="font-mono font-bold">{discount.code}</div>
+                    <div className="text-sm text-muted-foreground">Created: {new Date(discount.createdAt).toLocaleDateString()}</div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm">{discount.discountPercentage}%</span>
+                    <span className="text-sm">{discount.usageCount} uses</span>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      discount.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {discount.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="outline">Edit</Button>
+                      <Button size="sm" variant="outline">Toggle</Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {discountCodes.length === 0 && (
+                <div className="text-center text-muted-foreground py-8">
+                  No discount codes yet. Create your first discount code to get started.
+                </div>
+              )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="discount-type">Discount Type</Label>
-              <Select id="discount-type">
-                <SelectItem value="percentage">Percentage</SelectItem>
-                <SelectItem value="fixed">Fixed Amount</SelectItem>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="discount-value">Discount Value</Label>
-              <Input id="discount-value" type="number" placeholder="0" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="discount-expiry">Expiry Date</Label>
-              <Input id="discount-expiry" type="date" />
-            </div>
-            <div className="flex gap-2">
-              <Button className="flex-1">Create Code</Button>
-              <Button variant="outline" className="flex-1">Manage Existing</Button>
+          </CardContent>
+        </Card>
+
+        {/* Discount Code Creation Dialog */}
+        <Dialog open={showDiscountDialog} onOpenChange={setShowDiscountDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create Discount Code</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreateDiscountCode} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="discount-code">Discount Code</Label>
+                <Input
+                  id="discount-code"
+                  placeholder="e.g., SAVE20"
+                  value={discountForm.code}
+                  onChange={(e) => setDiscountForm({...discountForm, code: e.target.value.toUpperCase()})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="discount-type">Discount Type</Label>
+                <Select value={discountForm.discountType} onValueChange={(value) => setDiscountForm({...discountForm, discountType: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percentage">Percentage</SelectItem>
+                    <SelectItem value="fixed">Fixed Amount</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="discount-value">
+                  Discount Value {discountForm.discountType === 'percentage' ? '(%)' : '($)'}
+                </Label>
+                <Input
+                  id="discount-value"
+                  type="number"
+                  step="0.01"
+                  placeholder="0"
+                  value={discountForm.discountValue}
+                  onChange={(e) => setDiscountForm({...discountForm, discountValue: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="discount-expiry">Expiry Date (Optional)</Label>
+                <Input
+                  id="discount-expiry"
+                  type="date"
+                  value={discountForm.expiryDate}
+                  onChange={(e) => setDiscountForm({...discountForm, expiryDate: e.target.value})}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" className="flex-1">Create Code</Button>
+                <Button type="button" variant="outline" className="flex-1" onClick={() => setShowDiscountDialog(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Sales Items */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              Sales & Promotions
+              <DialogTrigger onClick={() => setShowSalesDialog(true)}>
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Sale
+                </Button>
+              </DialogTrigger>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="max-h-64 overflow-y-auto space-y-2">
+              {discountCodes.map((discount) => (
+                <div key={discount.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex-1">
+                    <div className="font-mono font-bold">{discount.code}</div>
+                    <div className="text-sm text-muted-foreground">Created: {new Date(discount.createdAt).toLocaleDateString()}</div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm">{discount.discountPercentage}%</span>
+                    <span className="text-sm">{discount.usageCount} uses</span>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      discount.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {discount.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="outline">Edit</Button>
+                      <Button size="sm" variant="outline">Toggle</Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {discountCodes.length === 0 && (
+                <div className="text-center text-muted-foreground py-8">
+                  No discount codes yet. Create your first discount code to get started.
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -240,32 +516,114 @@ export function AdminDashboard() {
         {/* Sales Items */}
         <Card>
           <CardHeader>
-            <CardTitle>Sales & Promotions</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              Sales & Promotions
+              <DialogTrigger onClick={() => setShowSalesDialog(true)}>
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Sale
+                </Button>
+              </DialogTrigger>
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="sale-name">Sale Name</Label>
-              <Input id="sale-name" placeholder="e.g., Summer Sale" />
+            <div className="max-h-64 overflow-y-auto space-y-2">
+              {salesItems.map((sale) => (
+                <div key={sale.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex-1">
+                    <div className="font-medium">{sale.title}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {new Date(sale.saleStartDate).toLocaleDateString()} - {new Date(sale.saleEndDate).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <div className="text-sm line-through text-muted-foreground">${sale.originalPrice.toFixed(2)}</div>
+                      <div className="text-green-600 font-bold">${sale.salePrice.toFixed(2)}</div>
+                    </div>
+                    <span className="text-sm">{sale.discountPercentage}% off</span>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      sale.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {sale.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="outline">Edit</Button>
+                      <Button size="sm" variant="outline">Toggle</Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {salesItems.length === 0 && (
+                <div className="text-center text-muted-foreground py-8">
+                  No active sales. Create your first sale to get started.
+                </div>
+              )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="sale-discount">Discount %</Label>
-              <Input id="sale-discount" type="number" placeholder="25" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sale-products">Select Products</Label>
-              <Select id="sale-products">
-                <SelectItem value="all">All Products</SelectItem>
-                <SelectItem value="category">By Category</SelectItem>
-                <SelectItem value="specific">Specific Products</SelectItem>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sale-duration">Duration (Days)</Label>
-              <Input id="sale-duration" type="number" placeholder="7" />
-            </div>
-            <Button className="w-full">Create Sale</Button>
           </CardContent>
         </Card>
+
+        {/* Sales Creation Dialog */}
+        <Dialog open={showSalesDialog} onOpenChange={setShowSalesDialog}>
+          <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create Sale/Promotion</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleCreateSale} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="sale-name">Sale Name</Label>
+                      <Input
+                        id="sale-name"
+                        placeholder="e.g., Summer Sale"
+                        value={salesForm.name}
+                        onChange={(e) => setSalesForm({...salesForm, name: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="sale-discount">Discount %</Label>
+                      <Input
+                        id="sale-discount"
+                        type="number"
+                        placeholder="25"
+                        value={salesForm.discount}
+                        onChange={(e) => setSalesForm({...salesForm, discount: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="sale-products">Product Selection</Label>
+                      <Select value={salesForm.productSelection} onValueChange={(value) => setSalesForm({...salesForm, productSelection: value})}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Products</SelectItem>
+                          <SelectItem value="category">By Category</SelectItem>
+                          <SelectItem value="specific">Specific Products</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="sale-duration">Duration (Days)</Label>
+                      <Input
+                        id="sale-duration"
+                        type="number"
+                        placeholder="7"
+                        value={salesForm.duration}
+                        onChange={(e) => setSalesForm({...salesForm, duration: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button type="submit" className="flex-1">Create Sale</Button>
+                      <Button type="button" variant="outline" className="flex-1" onClick={() => setShowSalesDialog(false)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
       </div>
 
       {/* Product Listing */}
@@ -503,24 +861,39 @@ export function AdminDashboard() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             Order Management
-            <Select>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Sort Orders" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="date-desc">Date: Newest First</SelectItem>
-                <SelectItem value="date-asc">Date: Oldest First</SelectItem>
-                <SelectItem value="customer">Customer Name</SelectItem>
-                <SelectItem value="amount-desc">Order Amount: High-Low</SelectItem>
-                <SelectItem value="amount-asc">Order Amount: Low-High</SelectItem>
-                <SelectItem value="status">Order Status</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              <Select value={orderFilterStatus} onValueChange={setOrderFilterStatus}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Filter Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="PROCESSING">Processing</SelectItem>
+                  <SelectItem value="SHIPPED">Shipped</SelectItem>
+                  <SelectItem value="DELIVERED">Delivered</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={orderSortBy} onValueChange={setOrderSortBy}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Sort Orders" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date-desc">Date: Newest First</SelectItem>
+                  <SelectItem value="date-asc">Date: Oldest First</SelectItem>
+                  <SelectItem value="customer">Customer Name</SelectItem>
+                  <SelectItem value="amount-desc">Order Amount: High-Low</SelectItem>
+                  <SelectItem value="amount-asc">Order Amount: Low-High</SelectItem>
+                  <SelectItem value="status">Order Status</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {recentOrders.map((order) => (
+            {filteredOrders.map((order) => (
               <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
                 <div className="flex-1">
                   <div className="flex items-center gap-3">

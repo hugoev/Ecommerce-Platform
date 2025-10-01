@@ -111,6 +111,20 @@ export const userApi = {
   changePassword(userId: number, passwordData: ChangePasswordRequest): Promise<void> {
     return apiService.post<void, ChangePasswordRequest>(`/api/auth/change-password/${userId}`, passwordData);
   },
+
+  // Get current user info from token
+  getCurrentUser(): Promise<UserProfileResponse> {
+    // This would need to be implemented based on the backend's current user endpoint
+    // For now, we'll use a placeholder that gets user info from local storage or token
+    return Promise.resolve({
+      id: 0,
+      username: '',
+      fullName: '',
+      role: 'ROLE_USER',
+      createdAt: new Date().toISOString(),
+      isActive: true
+    });
+  },
 };
 
 export const userHelpers = {

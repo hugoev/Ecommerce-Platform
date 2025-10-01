@@ -1,24 +1,30 @@
+import type { RootState } from "@/app/store";
+import { LoginModal } from "@/components/LoginModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCart } from "@/hooks/useCart";
 import { useItems } from "@/hooks/useItems";
+import { guestCartUtils } from "@/utils/guestCart";
 import { Loader2, Search, ShoppingCart } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
 
 export function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("price");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const { items, loading, error, fetchItems } = useItems();
   const { addItem } = useCart();
   const [addingToCart, setAddingToCart] = useState<number | null>(null);
 
-  // For demo purposes, using userId = 1 (you would get this from auth context)
-  const userId = 1;
+  // Get current user from auth state
+  const user = useSelector((state: RootState) => state.auth.user);
+  const userId = user?.id;
 
   // Debounce search term
   useEffect(() => {
@@ -53,14 +59,27 @@ export function ProductsPage() {
     }
   };
 
-  const handleAddToCart = async (productId: number) => {
-    setAddingToCart(productId);
+  const handleAddToCart = async (product: any) => {
+    setAddingToCart(product.id);
     try {
-      await addItem(userId, productId, 1);
-      // You could show a success message here
+      if (userId) {
+        // User is logged in - use authenticated cart
+        await addItem(userId, product.id, 1);
+        // You could show a success message here
+      } else {
+        // User is not logged in - use guest cart
+        guestCartUtils.addItem(product.id, product.title, product.price, 1);
+        // Show login modal to encourage login
+        setShowLoginModal(true);
+      }
     } catch (error) {
-      console.error('Failed to add item to cart:', error);
-      // You could show an error message here
+      if (error instanceof Error && error.message.includes('Unauthorized')) {
+        // This shouldn't happen since we're handling it above, but just in case
+        setShowLoginModal(true);
+      } else {
+        console.error('Failed to add item to cart:', error);
+        // You could show an error message here
+      }
     } finally {
       setAddingToCart(null);
     }
@@ -146,7 +165,7 @@ export function ProductsPage() {
                   className="w-full"
                   disabled={product.quantityAvailable === 0 || addingToCart === product.id}
                   size="lg"
-                  onClick={() => handleAddToCart(product.id)}
+                  onClick={() => handleAddToCart(product)}
                 >
                   {addingToCart === product.id ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -171,6 +190,17 @@ export function ProductsPage() {
         </div>
       )}
 
+      {/* Login Modal for guest users */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLoginSuccess={() => {
+          setShowLoginModal(false);
+          // Refresh the page to update user state
+          window.location.reload();
+        }}
+        message="Please log in to add items to your cart and save your selections."
+      />
     </div>
   );
 }
