@@ -126,7 +126,14 @@ export function CartPage() {
   };
 
   // Determine which cart to display
-  const displayCart = userId ? cart : (guestCart || {
+  const displayCart = userId ? (cart || {
+    items: [],
+    subtotal: 0,
+    tax: 0,
+    discountAmount: 0,
+    total: 0,
+    lastUpdated: new Date().toISOString()
+  }) : (guestCart || {
     items: [],
     subtotal: 0,
     tax: 0,
@@ -136,7 +143,19 @@ export function CartPage() {
   });
   const hasItems = displayCart && displayCart.items && displayCart.items.length > 0;
 
-  if (!hasItems) {
+  // Show loading state when cart is loading for authenticated users
+  if (loading && userId) {
+    return (
+      <div className="container py-8 px-4 max-w-7xl mx-auto">
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Loading cart...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasItems && !loading) {
     return (
       <div className="container py-8 px-4 max-w-7xl mx-auto">
         <div className="text-center py-12">
@@ -144,17 +163,6 @@ export function CartPage() {
           <h3 className="text-xl font-semibold mb-2">Your cart is empty</h3>
           <p className="text-text-muted mb-4">Add some products to get started</p>
           <Button onClick={() => navigate('/products')}>Browse Products</Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="container py-8 px-4 max-w-7xl mx-auto">
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading cart...</span>
         </div>
       </div>
     );
