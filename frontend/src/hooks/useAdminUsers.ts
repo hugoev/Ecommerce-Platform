@@ -52,7 +52,7 @@ export function useAdminUsers(): UseAdminUsersState & UseAdminUsersActions {
 
     try {
       // For now, we'll use a placeholder since the backend might not support user creation
-      // In a real implementation, this would call an API endpoint
+      // In a real implementation, this would call adminApi.createUser(user)
       console.log('Creating user:', user);
       // Refresh users list after creation
       await fetchUsers();

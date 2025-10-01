@@ -37,6 +37,16 @@ export interface CreateDiscountCodeRequest {
   code: string;
   discountPercentage: number;
   expiryDate?: string;
+  active?: boolean;
+}
+
+export interface DiscountCodeResponse {
+  id: number;
+  code: string;
+  discountPercentage: number;
+  expiryDate?: string;
+  active: boolean;
+  createdAt?: string;
 }
 
 const apiService = {
@@ -163,9 +173,21 @@ export const adminApi = {
   },
 
   // Discount Code Management
-  createDiscountCode(discount: CreateDiscountCodeRequest): Promise<{ id: number; code: string; discountPercentage: number }> {
-    return apiService.post<{ success: boolean; data: { id: number; code: string; discountPercentage: number } }, CreateDiscountCodeRequest>('/api/admin/discounts', discount)
+  getAllDiscountCodes(): Promise<DiscountCodeResponse[]> {
+    return apiService.get<{ success: boolean; data: DiscountCodeResponse[] }>('/api/admin/discount-codes')
       .then(response => response.data);
+  },
+
+  createDiscountCode(discount: CreateDiscountCodeRequest): Promise<DiscountCodeResponse> {
+    return apiService.post<DiscountCodeResponse, CreateDiscountCodeRequest>('/api/admin/discount-codes', discount);
+  },
+
+  updateDiscountCode(id: number, discount: Partial<CreateDiscountCodeRequest>): Promise<DiscountCodeResponse> {
+    return apiService.put<DiscountCodeResponse, Partial<CreateDiscountCodeRequest>>(`/api/admin/discount-codes/${id}`, discount);
+  },
+
+  deleteDiscountCode(id: number): Promise<void> {
+    return apiService.delete(`/api/admin/discount-codes/${id}`);
   },
 
   // Order Management (Admin)

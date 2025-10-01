@@ -156,7 +156,8 @@ export function AdminDashboard() {
       await createDiscountCode({
         code: discountForm.code,
         discountPercentage,
-        expiryDate: discountForm.expiryDate || undefined
+        expiryDate: discountForm.expiryDate || undefined,
+        active: true
       });
 
       setDiscountForm({
@@ -380,15 +381,15 @@ export function AdminDashboard() {
                 <div key={discount.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex-1">
                     <div className="font-mono font-bold">{discount.code}</div>
-                    <div className="text-sm text-muted-foreground">Created: {new Date(discount.createdAt).toLocaleDateString()}</div>
+                    <div className="text-sm text-muted-foreground">Created: {discount.createdAt ? new Date(discount.createdAt || '').toLocaleDateString() : 'Unknown'}</div>
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="text-sm">{discount.discountPercentage}%</span>
                     <span className="text-sm">{discount.usageCount} uses</span>
                     <span className={`px-2 py-1 rounded-full text-xs ${
-                      discount.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      discount.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                     }`}>
-                      {discount.isActive ? 'Active' : 'Inactive'}
+                      {discount.active ? 'Active' : 'Inactive'}
                     </span>
                     <div className="flex gap-1">
                       <Button size="sm" variant="outline">Edit</Button>
@@ -483,51 +484,6 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="max-h-64 overflow-y-auto space-y-2">
-              {discountCodes.map((discount) => (
-                <div key={discount.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="font-mono font-bold">{discount.code}</div>
-                    <div className="text-sm text-muted-foreground">Created: {new Date(discount.createdAt).toLocaleDateString()}</div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm">{discount.discountPercentage}%</span>
-                    <span className="text-sm">{discount.usageCount} uses</span>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      discount.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {discount.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="outline">Edit</Button>
-                      <Button size="sm" variant="outline">Toggle</Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {discountCodes.length === 0 && (
-                <div className="text-center text-muted-foreground py-8">
-                  No discount codes yet. Create your first discount code to get started.
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Sales Items */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              Sales & Promotions
-              <DialogTrigger onClick={() => setShowSalesDialog(true)}>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Sale
-                </Button>
-              </DialogTrigger>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="max-h-64 overflow-y-auto space-y-2">
               {salesItems.map((sale) => (
                 <div key={sale.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex-1">
@@ -566,64 +522,64 @@ export function AdminDashboard() {
         {/* Sales Creation Dialog */}
         <Dialog open={showSalesDialog} onOpenChange={setShowSalesDialog}>
           <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Create Sale/Promotion</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handleCreateSale} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="sale-name">Sale Name</Label>
-                      <Input
-                        id="sale-name"
-                        placeholder="e.g., Summer Sale"
-                        value={salesForm.name}
-                        onChange={(e) => setSalesForm({...salesForm, name: e.target.value})}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="sale-discount">Discount %</Label>
-                      <Input
-                        id="sale-discount"
-                        type="number"
-                        placeholder="25"
-                        value={salesForm.discount}
-                        onChange={(e) => setSalesForm({...salesForm, discount: e.target.value})}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="sale-products">Product Selection</Label>
-                      <Select value={salesForm.productSelection} onValueChange={(value) => setSalesForm({...salesForm, productSelection: value})}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Products</SelectItem>
-                          <SelectItem value="category">By Category</SelectItem>
-                          <SelectItem value="specific">Specific Products</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="sale-duration">Duration (Days)</Label>
-                      <Input
-                        id="sale-duration"
-                        type="number"
-                        placeholder="7"
-                        value={salesForm.duration}
-                        onChange={(e) => setSalesForm({...salesForm, duration: e.target.value})}
-                        required
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button type="submit" className="flex-1">Create Sale</Button>
-                      <Button type="button" variant="outline" className="flex-1" onClick={() => setShowSalesDialog(false)}>
-                        Cancel
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
+            <DialogHeader>
+              <DialogTitle>Create Sale/Promotion</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreateSale} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="sale-name">Sale Name</Label>
+                <Input
+                  id="sale-name"
+                  placeholder="e.g., Summer Sale"
+                  value={salesForm.name}
+                  onChange={(e) => setSalesForm({...salesForm, name: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sale-discount">Discount %</Label>
+                <Input
+                  id="sale-discount"
+                  type="number"
+                  placeholder="25"
+                  value={salesForm.discount}
+                  onChange={(e) => setSalesForm({...salesForm, discount: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sale-products">Product Selection</Label>
+                <Select value={salesForm.productSelection} onValueChange={(value) => setSalesForm({...salesForm, productSelection: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Products</SelectItem>
+                    <SelectItem value="category">By Category</SelectItem>
+                    <SelectItem value="specific">Specific Products</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sale-duration">Duration (Days)</Label>
+                <Input
+                  id="sale-duration"
+                  type="number"
+                  placeholder="7"
+                  value={salesForm.duration}
+                  onChange={(e) => setSalesForm({...salesForm, duration: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" className="flex-1">Create Sale</Button>
+                <Button type="button" variant="outline" className="flex-1" onClick={() => setShowSalesDialog(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Product Listing */}

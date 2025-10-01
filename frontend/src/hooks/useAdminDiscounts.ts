@@ -6,8 +6,8 @@ export interface DiscountCode {
   code: string;
   discountPercentage: number;
   expiryDate?: string;
-  isActive: boolean;
-  createdAt: string;
+  active: boolean;
+  createdAt?: string;
   usageCount: number;
 }
 
@@ -37,41 +37,22 @@ export function useAdminDiscounts(): UseAdminDiscountsState & UseAdminDiscountsA
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
-      // For now, we'll use a placeholder since the backend might not have discount endpoints
-      // In a real implementation, this would call adminApi.getAllDiscountCodes()
-      const mockDiscountCodes: DiscountCode[] = [
-        {
-          id: 1,
-          code: 'SAVE20',
-          discountPercentage: 20,
-          expiryDate: '2024-12-31',
-          isActive: true,
-          createdAt: '2024-01-15T10:00:00Z',
-          usageCount: 45,
-        },
-        {
-          id: 2,
-          code: 'WELCOME10',
-          discountPercentage: 10,
-          expiryDate: '2024-06-30',
-          isActive: true,
-          createdAt: '2024-02-01T14:30:00Z',
-          usageCount: 23,
-        },
-        {
-          id: 3,
-          code: 'FLASH50',
-          discountPercentage: 50,
-          expiryDate: '2024-03-15',
-          isActive: false,
-          createdAt: '2024-03-01T09:15:00Z',
-          usageCount: 12,
-        },
-      ];
+      const discountCodeResponses = await adminApi.getAllDiscountCodes();
+
+      // Transform API response to match our interface
+      const discountCodes: DiscountCode[] = discountCodeResponses.map(response => ({
+        id: response.id,
+        code: response.code,
+        discountPercentage: response.discountPercentage,
+        expiryDate: response.expiryDate,
+        active: response.active,
+        createdAt: response.createdAt,
+        usageCount: 0, // Backend doesn't provide usage count, default to 0
+      }));
 
       setState(prev => ({
         ...prev,
-        discountCodes: mockDiscountCodes,
+        discountCodes,
         loading: false,
       }));
     } catch (error) {
@@ -92,8 +73,8 @@ export function useAdminDiscounts(): UseAdminDiscountsState & UseAdminDiscountsA
         id: newDiscount.id,
         code: newDiscount.code,
         discountPercentage: newDiscount.discountPercentage,
-        expiryDate: discount.expiryDate,
-        isActive: true,
+        expiryDate: newDiscount.expiryDate,
+        active: newDiscount.active ?? true,
         createdAt: new Date().toISOString(),
         usageCount: 0,
       };
@@ -119,14 +100,18 @@ export function useAdminDiscounts(): UseAdminDiscountsState & UseAdminDiscountsA
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
-      // For now, we'll use a placeholder since the backend might not support discount updates
-      // In a real implementation, this would call adminApi.updateDiscountCode(id, updates)
-      console.log('Updating discount code:', id, updates);
+      const updatedDiscount = await adminApi.updateDiscountCode(id, updates);
 
       setState(prev => ({
         ...prev,
         discountCodes: prev.discountCodes.map(code =>
-          code.id === id ? { ...code, ...updates } : code
+          code.id === id ? {
+            ...code,
+            code: updatedDiscount.code,
+            discountPercentage: updatedDiscount.discountPercentage,
+            expiryDate: updatedDiscount.expiryDate,
+            active: updatedDiscount.active
+          } : code
         ),
         loading: false,
       }));
@@ -143,9 +128,7 @@ export function useAdminDiscounts(): UseAdminDiscountsState & UseAdminDiscountsA
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
-      // For now, we'll use a placeholder since the backend might not support discount deletion
-      // In a real implementation, this would call adminApi.deleteDiscountCode(id)
-      console.log('Deleting discount code:', id);
+      await adminApi.deleteDiscountCode(id);
 
       setState(prev => ({
         ...prev,
@@ -162,25 +145,43 @@ export function useAdminDiscounts(): UseAdminDiscountsState & UseAdminDiscountsA
   }, []);
 
   const toggleDiscountCode = useCallback(async (id: number) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
+    let currentActiveStatus: boolean | undefined;
+
+    setState(prev => {
+      const currentDiscount = prev.discountCodes.find(code => code.id === id);
+      if (!currentDiscount) {
+        return { ...prev, loading: false, error: 'Discount code not found' };
+      }
+
+      currentActiveStatus = currentDiscount.active;
+
+      // Optimistically update the UI
+      return {
+        ...prev,
+        loading: true,
+        error: null,
+        discountCodes: prev.discountCodes.map(code =>
+          code.id === id ? { ...code, active: !code.active } : code
+        ),
+      };
+    });
 
     try {
-      // For now, we'll use a placeholder since the backend might not support discount toggling
-      // In a real implementation, this would call adminApi.toggleDiscountCode(id)
-      console.log('Toggling discount code:', id);
+      // Call the API to persist the change
+      if (currentActiveStatus !== undefined) {
+        await adminApi.updateDiscountCode(id, { active: !currentActiveStatus });
+      }
 
-      setState(prev => ({
-        ...prev,
-        discountCodes: prev.discountCodes.map(code =>
-          code.id === id ? { ...code, isActive: !code.isActive } : code
-        ),
-        loading: false,
-      }));
+      setState(prev => ({ ...prev, loading: false }));
     } catch (error) {
+      // Revert the optimistic update on error
       setState(prev => ({
         ...prev,
         loading: false,
         error: error instanceof Error ? error.message : 'Failed to toggle discount code',
+        discountCodes: prev.discountCodes.map(code =>
+          code.id === id ? { ...code, active: currentActiveStatus || code.active } : code // Revert the change
+        ),
       }));
     }
   }, []);
