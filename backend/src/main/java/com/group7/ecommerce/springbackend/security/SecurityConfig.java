@@ -24,8 +24,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authz -> authz
 
                         .requestMatchers("/api/auth/**", "/api/items/**", "/images/**").permitAll()
-                        .requestMatchers("/api/orders/**", "/api/cart/**").hasRole("USER")
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/api/orders/**", "/api/cart/**").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
                         .anyRequest().authenticated())
                 .exceptionHandling().authenticationEntryPoint(unauthorizedHandler).and()
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
