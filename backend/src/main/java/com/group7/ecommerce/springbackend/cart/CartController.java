@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.group7.ecommerce.springbackend.user.User;
+import com.group7.ecommerce.springbackend.user.UserRepository;
 
 import jakarta.validation.Valid;
 
@@ -23,20 +24,38 @@ import jakarta.validation.Valid;
 public class CartController {
 
     private final CartService cartService;
+    private final UserRepository userRepository;
 
-    public CartController(CartService cartService) {
+    public CartController(CartService cartService, UserRepository userRepository) {
         this.cartService = cartService;
+        this.userRepository = userRepository;
     }
 
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        System.out.println("CartController - Authentication: " + authentication);
+        System.out.println("CartController - Authentication is authenticated: "
+                + (authentication != null ? authentication.isAuthenticated() : "null"));
+
         if (authentication == null || !authentication.isAuthenticated()) {
+            System.out.println("CartController - User not authenticated");
             throw new RuntimeException("User not authenticated");
         }
 
         Object principal = authentication.getPrincipal();
-        if (principal instanceof User) {
-            return (User) principal;
+        System.out.println("CartController - Principal: " + principal);
+        System.out.println(
+                "CartController - Principal type: " + (principal != null ? principal.getClass().getName() : "null"));
+
+        // The principal is a UserDetails object, not the User entity
+        if (principal instanceof org.springframework.security.core.userdetails.User) {
+            org.springframework.security.core.userdetails.User userDetails = (org.springframework.security.core.userdetails.User) principal;
+            String username = userDetails.getUsername();
+            System.out.println("CartController - Found authenticated user: " + username);
+
+            // Look up the User entity by username
+            return userRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("User not found: " + username));
         }
 
         throw new RuntimeException("Unable to get authenticated user");
@@ -54,48 +73,52 @@ public class CartController {
     }
 
     @PostMapping("/items/{itemId}")
-    public ResponseEntity<Cart> addItemToCart(
+    public ResponseEntity<CartDto> addItemToCart(
             @PathVariable Long itemId,
             @RequestBody @Valid AddItemRequest request) {
         try {
             User user = getCurrentUser();
             Cart cart = cartService.addItemToCart(user.getId(), itemId, request.getQuantity());
-            return ResponseEntity.ok(cart);
+            CartDto cartDto = cartService.convertToDto(cart);
+            return ResponseEntity.ok(cartDto);
         } catch (NoSuchElementException | IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
     @PutMapping("/items/{itemId}")
-    public ResponseEntity<Cart> updateItemQuantity(
+    public ResponseEntity<CartDto> updateItemQuantity(
             @PathVariable Long itemId,
             @RequestBody @Valid UpdateQuantityRequest request) {
         try {
             User user = getCurrentUser();
             Cart cart = cartService.updateItemQuantity(user.getId(), itemId, request.getQuantity());
-            return ResponseEntity.ok(cart);
+            CartDto cartDto = cartService.convertToDto(cart);
+            return ResponseEntity.ok(cartDto);
         } catch (NoSuchElementException | IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
     @DeleteMapping("/items/{itemId}")
-    public ResponseEntity<Cart> removeItemFromCart(@PathVariable Long itemId) {
+    public ResponseEntity<CartDto> removeItemFromCart(@PathVariable Long itemId) {
         try {
             User user = getCurrentUser();
             Cart cart = cartService.removeItemFromCart(user.getId(), itemId);
-            return ResponseEntity.ok(cart);
+            CartDto cartDto = cartService.convertToDto(cart);
+            return ResponseEntity.ok(cartDto);
         } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();
         }
     }
 
     @DeleteMapping
-    public ResponseEntity<Void> clearCart() {
+    public ResponseEntity<CartDto> clearCart() {
         try {
             User user = getCurrentUser();
-            cartService.clearCart(user.getId());
-            return ResponseEntity.ok().build();
+            Cart cart = cartService.clearCart(user.getId());
+            CartDto cartDto = cartService.convertToDto(cart);
+            return ResponseEntity.ok(cartDto);
         } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();
         }
@@ -127,26 +150,28 @@ public class CartController {
     }
 
     @PostMapping("/items/{itemId}/increase")
-    public ResponseEntity<Cart> increaseItemQuantity(
+    public ResponseEntity<CartDto> increaseItemQuantity(
             @PathVariable Long itemId,
             @RequestBody @Valid ChangeQuantityRequest request) {
         try {
             User user = getCurrentUser();
             Cart cart = cartService.increaseItemQuantity(user.getId(), itemId, request.getAmount());
-            return ResponseEntity.ok(cart);
+            CartDto cartDto = cartService.convertToDto(cart);
+            return ResponseEntity.ok(cartDto);
         } catch (NoSuchElementException | IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
     @PostMapping("/items/{itemId}/decrease")
-    public ResponseEntity<Cart> decreaseItemQuantity(
+    public ResponseEntity<CartDto> decreaseItemQuantity(
             @PathVariable Long itemId,
             @RequestBody @Valid ChangeQuantityRequest request) {
         try {
             User user = getCurrentUser();
             Cart cart = cartService.decreaseItemQuantity(user.getId(), itemId, request.getAmount());
-            return ResponseEntity.ok(cart);
+            CartDto cartDto = cartService.convertToDto(cart);
+            return ResponseEntity.ok(cartDto);
         } catch (NoSuchElementException | IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }

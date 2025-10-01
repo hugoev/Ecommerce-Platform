@@ -1,4 +1,7 @@
+import { type CartItemResponse } from "@/api/cart";
+import { clearAuth } from "@/app/features/auth/authSlice";
 import type { RootState } from "@/app/store";
+import { useAppDispatch } from "@/app/store";
 import { LoginModal } from "@/components/LoginModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { useCart } from "@/hooks/useCart";
 import { useItems } from "@/hooks/useItems";
 import { guestCartUtils, type GuestCartItem } from "@/utils/guestCart";
-import { type CartItemResponse } from "@/api/cart";
 import { Loader2, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
@@ -15,29 +17,62 @@ import { useNavigate } from "react-router-dom";
 
 export function CartPage() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const { cart, loading, error, fetchCart, updateQuantity, removeItem, applyDiscount: applyDiscountToCart } = useCart();
   const { items } = useItems();
   const [discountCode, setDiscountCode] = useState("");
   const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [guestCart, setGuestCart] = useState<any>(null);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   // Union type for cart items (authenticated or guest)
   type CartItem = CartItemResponse | GuestCartItem;
 
   // Get current user from auth state
   const user = useSelector((state: RootState) => state.auth.user);
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   const userId = user?.id;
 
+  // Check if user is properly authenticated
   useEffect(() => {
-    if (userId) {
-      fetchCart(userId);
+    const token = localStorage.getItem('token');
+    console.log('CartPage - Auth state:', {
+      isAuthenticated,
+      userId,
+      hasToken: !!token,
+      tokenPreview: token ? token.substring(0, 20) + '...' : 'No token'
+    });
+  }, [isAuthenticated, userId]);
+
+  useEffect(() => {
+    if (isAuthenticated && userId) {
+      // Check if token exists before making authenticated request
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('CartPage - No token found, user needs to login');
+        setShowLoginPrompt(true);
+        return;
+      }
+
+      console.log('CartPage - User is authenticated, fetching cart for userId:', userId);
+      fetchCart(userId).catch(error => {
+        console.error('CartPage - Error fetching cart:', error);
+        if (error instanceof Error && error.message === 'LOGIN_REQUIRED') {
+          console.log('CartPage - Authentication failed, clearing auth state and showing login prompt');
+          dispatch(clearAuth());
+          setShowLoginPrompt(true);
+        } else {
+          console.error('CartPage - Unexpected error:', error);
+        }
+      });
     } else {
+      console.log('CartPage - User is not authenticated, loading guest cart');
       // Load guest cart if user is not logged in
       const guestCartData = guestCartUtils.getCartSummary();
       setGuestCart(guestCartData);
     }
-  }, [fetchCart, userId]);
+  }, [fetchCart, userId, isAuthenticated]);
 
   // Listen for cart updates from other components
   useEffect(() => {
@@ -151,6 +186,33 @@ export function CartPage() {
         <div className="flex justify-center items-center py-12">
           <Loader2 className="h-8 w-8 animate-spin" />
           <span className="ml-2">Loading cart...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (showLoginPrompt) {
+    return (
+      <div className="container py-8 px-4 max-w-7xl mx-auto">
+        <div className="text-center py-12">
+          <ShoppingBag className="h-16 w-16 mx-auto text-text-muted mb-4" />
+          <h3 className="text-xl font-semibold mb-2">Authentication Required</h3>
+          <p className="text-text-muted mb-4">Your session has expired. Please log in again to access your cart.</p>
+          <div className="space-y-3">
+            <Button onClick={() => navigate('/login')} className="w-full max-w-sm">
+              Login Again
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                dispatch(clearAuth());
+                navigate('/products');
+              }}
+              className="w-full max-w-sm"
+            >
+              Continue as Guest
+            </Button>
+          </div>
         </div>
       </div>
     );

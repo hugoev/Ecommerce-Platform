@@ -1,4 +1,6 @@
+import { clearAuth } from "@/app/features/auth/authSlice";
 import type { RootState } from "@/app/store";
+import { useAppDispatch } from "@/app/store";
 import { LoginModal } from "@/components/LoginModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -12,6 +14,7 @@ import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 
 export function ProductsPage() {
+  const dispatch = useAppDispatch();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("price");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -25,6 +28,7 @@ export function ProductsPage() {
 
   // Get current user from auth state
   const user = useSelector((state: RootState) => state.auth.user);
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   const userId = user?.id;
 
   // Debounce search term
@@ -63,8 +67,17 @@ export function ProductsPage() {
   const handleAddToCart = async (product: any) => {
     setAddingToCart(product.id);
     try {
-      if (userId) {
+      if (isAuthenticated && userId) {
+        // Check if token exists before making authenticated request
+        const token = localStorage.getItem('token');
+        if (!token) {
+          console.error('ProductsPage - No token found, user needs to login');
+          setShowLoginModal(true);
+          return;
+        }
+
         // User is logged in - use authenticated cart
+        console.log('ProductsPage - Adding item to authenticated cart');
         await addItem(userId, product.id, 1);
         // Dispatch custom event to notify other components
         window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { userId } }));
@@ -73,6 +86,7 @@ export function ProductsPage() {
         setTimeout(() => setShowSuccessMessage(false), 3000);
       } else {
         // User is not logged in - use guest cart
+        console.log('ProductsPage - Adding item to guest cart');
         guestCartUtils.addItem(product.id, product.title, product.price, 1);
         // Dispatch custom event for guest cart updates
         window.dispatchEvent(new CustomEvent('guestCartUpdated'));
@@ -80,8 +94,10 @@ export function ProductsPage() {
         setShowLoginModal(true);
       }
     } catch (error) {
-      if (error instanceof Error && error.message.includes('Unauthorized')) {
-        // This shouldn't happen since we're handling it above, but just in case
+      console.error('ProductsPage - Error adding to cart:', error);
+      if (error instanceof Error && error.message === 'LOGIN_REQUIRED') {
+        console.error('ProductsPage - Authentication failed, clearing auth state');
+        dispatch(clearAuth());
         setShowLoginModal(true);
       } else {
         console.error('Failed to add item to cart:', error);

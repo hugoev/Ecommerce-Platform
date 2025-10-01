@@ -62,7 +62,8 @@ const apiService = {
 
     if (!response.ok) {
       if (response.status === 401) {
-        throw new Error('Unauthorized - Please log in');
+        console.error('Cart API - 401 Unauthorized response, token might be invalid');
+        throw new Error('LOGIN_REQUIRED');
       }
       const errorData = await response.json().catch(() => ({ message: response.statusText }));
       throw new Error(errorData.message || 'An unknown error occurred');
@@ -88,7 +89,8 @@ const apiService = {
 
     if (!response.ok) {
       if (response.status === 401) {
-        throw new Error('Unauthorized - Please log in');
+        console.error('Cart API - 401 Unauthorized response, token might be invalid');
+        throw new Error('LOGIN_REQUIRED');
       }
       const errorData = await response.json().catch(() => ({ message: response.statusText }));
       throw new Error(errorData.message || 'An unknown error occurred');
@@ -148,6 +150,43 @@ const apiService = {
 export const cartApi = {
   // Get cart summary with calculated totals
   getCartSummary(): Promise<CartResponse> {
+    const token = localStorage.getItem('token');
+    console.log('Cart API - Token exists:', !!token);
+    console.log('Cart API - Token preview:', token ? token.substring(0, 20) + '...' : 'No token');
+
+    // Check if token exists and is not expired
+    if (token) {
+      try {
+        // Basic JWT structure check (header.payload.signature)
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+          console.error('Cart API - Invalid JWT token format');
+          localStorage.removeItem('token');
+          throw new Error('LOGIN_REQUIRED');
+        }
+
+        // Check if token is expired (basic check)
+        const payload = JSON.parse(atob(parts[1]));
+        const now = Math.floor(Date.now() / 1000);
+        if (payload.exp && payload.exp < now) {
+          console.error('Cart API - JWT token expired');
+          localStorage.removeItem('token');
+          throw new Error('LOGIN_REQUIRED');
+        }
+
+        console.log('Cart API - JWT token appears valid, expiration:', new Date(payload.exp * 1000));
+      } catch (error) {
+        console.error('Cart API - JWT token validation failed:', error);
+        localStorage.removeItem('token');
+        throw new Error('LOGIN_REQUIRED');
+      }
+    }
+
+    if (!token) {
+      console.error('Cart API - No token found, user needs to login');
+      throw new Error('LOGIN_REQUIRED');
+    }
+
     return apiService.get<CartResponse>(`/api/cart/summary`);
   },
 

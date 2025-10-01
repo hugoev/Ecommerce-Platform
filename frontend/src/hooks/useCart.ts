@@ -1,5 +1,5 @@
 import { cartApi, cartHelpers, type CartResponse } from '@/api/cart';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface UseCartState {
   cart: CartResponse | null;
