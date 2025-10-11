@@ -1,13 +1,15 @@
 # E-Commerce Platform
 
-A full-stack online shopping platform with Java Spring Boot backend, React frontend, and PostgreSQL database.
+A full-stack online shopping platform built with React, TypeScript, Spring Boot, and PostgreSQL.
 
 ## 🚀 Quick Start
 
 ```bash
-# Clone and start all services
+# Clone the repository
 git clone https://github.com/hugoev/Ecommerce-Platform.git
 cd Ecommerce-Platform
+
+# Start all services with Docker Compose
 docker compose up --build
 ```
 
@@ -15,381 +17,289 @@ docker compose up --build
 
 - 🌐 **Frontend**: http://localhost:5173
 - 🔧 **Backend API**: http://localhost:8080
-- 🗄️ **Database**: localhost:5432
+- 🗄️ **Database**: PostgreSQL on localhost:5432
+
+**Default Admin Credentials:**
+
+- Username: `admin`
+- Password: `admin123`
+
+## 📋 Features
+
+### User Features
+
+- ✅ User registration and authentication (JWT)
+- ✅ Browse and search products
+- ✅ Filter and sort by price/availability
+- ✅ Shopping cart with quantity management
+- ✅ Apply discount codes
+- ✅ Automatic tax calculation (8.25%)
+- ✅ Order placement and history
+- ✅ Profile management
+
+### Admin Features
+
+- ✅ Product management (CRUD operations)
+- ✅ Image upload for products
+- ✅ User management dashboard
+- ✅ Order tracking and status updates
+- ✅ Create discount codes
+- ✅ View sales analytics
+
+## 🛠️ Technology Stack
+
+**Frontend:**
+
+- React 19 with TypeScript
+- Vite for fast development
+- Tailwind CSS + shadcn/ui components
+- Redux Toolkit for state management
+- Axios for API calls
+
+**Backend:**
+
+- Spring Boot 3.5.6 with Java 17
+- Spring Security + JWT authentication
+- JPA/Hibernate for ORM
+- Flyway for database migrations
+- BCrypt for password hashing
+
+**Database:**
+
+- PostgreSQL 15 (production)
+- H2 (local development fallback)
+
+**DevOps:**
+
+- Docker & Docker Compose
+- Nginx for frontend serving
+- Multi-stage builds for optimization
 
 ## 📁 Project Structure
 
 ```
 Ecommerce-Platform/
-├── backend/                 # Java Spring Boot API
+├── backend/                    # Spring Boot API
 │   ├── src/main/java/
 │   │   └── com/group7/ecommerce/springbackend/
-│   │       ├── api/         # REST controllers
-│   │       ├── cart/       # Shopping cart logic
-│   │       ├── item/       # Product management
-│   │       ├── order/      # Order processing
-│   │       ├── user/       # User management
-│   │       └── security/   # JWT authentication
+│   │       ├── api/           # Admin controllers
+│   │       ├── cart/          # Shopping cart logic
+│   │       ├── item/          # Product management
+│   │       ├── order/         # Order processing
+│   │       ├── user/          # User management
+│   │       └── security/      # JWT & authentication
 │   └── src/main/resources/
-│       └── db/migration/   # Database migrations
-├── frontend/               # React TypeScript SPA
+│       ├── application.properties
+│       └── db/migration/      # Flyway SQL migrations
+│
+├── frontend/                  # React TypeScript SPA
 │   ├── src/
-│   │   ├── api/           # API service layer
-│   │   ├── components/    # Reusable UI components
-│   │   ├── pages/         # Application pages
-│   │   ├── hooks/         # Custom React hooks
-│   │   └── types/         # TypeScript definitions
+│   │   ├── api/              # API service layer
+│   │   ├── components/       # Reusable UI components
+│   │   ├── pages/            # Application pages
+│   │   ├── hooks/            # Custom React hooks
+│   │   ├── app/              # Redux store & slices
+│   │   └── types/            # TypeScript definitions
 │   └── package.json
-├── docker-compose.yml      # Container orchestration
+│
+├── docker-compose.yml         # Container orchestration
 └── README.md
 ```
 
-## 🛠️ Development Setup
+## 🔧 Development Setup
 
-### Option 1: Docker Compose (Recommended)
+### Prerequisites
+
+- Docker & Docker Compose
+- (Optional) Java 17, Node.js 18+, PostgreSQL 15
+
+### Option 1: Docker (Recommended)
 
 ```bash
 docker compose up --build
 ```
 
-### Option 2: Native Development
+Everything runs in containers - frontend, backend, and database.
+
+### Option 2: Local Development
 
 ```bash
-# 1. Start database
+# 1. Start PostgreSQL
 docker compose up -d db
 
-# 2. Backend (Java/Spring)
+# 2. Start Backend (Terminal 1)
 cd backend
-mvn spring-boot:run
+./mvnw spring-boot:run
 
-# 3. Frontend (React/Vite)
+# 3. Start Frontend (Terminal 2)
 cd frontend
 npm install
 npm run dev
 ```
 
-## 🎯 Features
+## 🔐 API Endpoints
 
-- **Authentication**: JWT-based user registration/login
-- **Product Catalog**: Search, filter, and browse products
-- **Shopping Cart**: Add/remove items, quantity management
-- **Order Management**: Place orders, track status
-- **Admin Dashboard**: Product and order management
-- **Responsive Design**: Modern UI with Tailwind CSS
+### Public Endpoints (No Auth Required)
 
-## 📋 Key Files
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - User login (returns JWT token)
+- `GET /api/items` - Browse products (with search, sort, pagination)
+- `GET /api/items/{id}` - Get single product
 
-### Backend
+### User Endpoints (JWT Required)
 
-- `SpringBackendApplication.java` - Main application entry point
-- `application.properties` - Database and JWT configuration
-- `V1__Initial_Schema.sql` - Database schema creation
-- `V2__Make_Email_Optional.sql` - Email field removal migration
-- `DataInitializer.java` - Seeds database with sample data
+- `GET /api/auth/profile/{id}` - Get user profile
+- `PUT /api/auth/profile/{id}` - Update profile
+- `POST /api/auth/change-password/{id}` - Change password
+- `GET /api/cart/{userId}` - Get shopping cart
+- `GET /api/cart/{userId}/summary` - Get cart with totals
+- `POST /api/cart/{userId}/items/{itemId}` - Add to cart
+- `PUT /api/cart/{userId}/items/{itemId}` - Update quantity
+- `DELETE /api/cart/{userId}/items/{itemId}` - Remove from cart
+- `DELETE /api/cart/{userId}` - Clear cart
+- `POST /api/cart/{userId}/discount` - Apply discount code
+- `POST /api/orders/{userId}/place` - Place order
+- `GET /api/orders/{userId}` - Get order history
 
-### Frontend
+### Admin Endpoints (Admin Role Required)
 
-- `main.tsx` - React app entry point
-- `App.tsx` - Main app component with routing
-- `api/` - API service layer for backend communication
-- `hooks/` - Custom React hooks for state management
-- `pages/` - Application pages (Cart, Products, Admin, etc.)
+- `GET /api/admin/users` - List all users (paginated)
+- `GET /api/admin/orders` - List all orders (paginated)
+- `GET /api/orders/admin/all` - Get all orders
+- `GET /api/orders/admin/status/{status}` - Filter by status
+- `PUT /api/orders/{orderId}/status` - Update order status
+- `POST /api/admin/items` - Create product
+- `PUT /api/admin/items/{id}` - Update product
+- `DELETE /api/admin/items/{id}` - Delete product
+- `POST /api/items/upload-image` - Upload product image
+- `POST /api/admin/discounts` - Create discount code
 
-### Configuration
+### API Response Format
 
-- `docker-compose.yml` - Container orchestration
-- `.env` - Environment variables
-- `package.json` - Frontend dependencies
-- `pom.xml` - Backend dependencies
-
----
-
-## 🔧 Backend (Java Spring Boot)
-
-- **Tech Stack**: Spring Boot 3, Java 17, PostgreSQL, JWT Authentication
-- **Features**: RESTful API, role-based authorization, shopping cart, product management
-
-- **Available Endpoints:**
-
-  **🔐 Authentication Endpoints:**
-
-  - `POST /api/auth/register` - User registration (username + password only)
-  - `POST /api/auth/login` - User login (username + password)
-  - `GET /api/auth/profile/{id}` - Get user profile
-  - `PUT /api/auth/profile/{id}` - Update user profile
-  - `POST /api/auth/change-password/{id}` - Change user password
-
-  **🛍️ Public Endpoints:**
-
-  - `GET /api/items` - Get all items (public catalog)
-  - `GET /api/items/search?q={query}` - Search items by title/description
-
-  **🛒 Shopping Cart Endpoints (Requires Authentication):**
-
-  - `GET /api/cart/{userId}` - Get user's cart
-  - `GET /api/cart/{userId}/summary` - Get cart summary with calculations
-  - `POST /api/cart/{userId}/items/{itemId}` - Add item to cart
-  - `PUT /api/cart/{userId}/items/{itemId}` - Update item quantity in cart
-  - `DELETE /api/cart/{userId}/items/{itemId}` - Remove item from cart
-  - `DELETE /api/cart/{userId}` - Clear entire cart
-  - `POST /api/cart/{userId}/items/{itemId}/increase` - Increase item quantity
-  - `POST /api/cart/{userId}/items/{itemId}/decrease` - Decrease item quantity
-  - `POST /api/cart/{userId}/discount` - Apply discount code to cart
-
-  **📦 Order Management Endpoints (Requires Authentication):**
-
-  - `GET /api/orders` - Get user's order history
-  - `POST /api/orders/place` - Place order from cart
-  - `GET /api/orders/admin/all` - Get all orders (Admin only)
-  - `PUT /api/orders/admin/{orderId}/status` - Update order status (Admin only)
-
-  **👑 Admin Endpoints (Requires Admin Role):**
-
-  - `GET /api/admin/items` - Get all items for management
-  - `POST /api/admin/items` - Create new item
-  - `PUT /api/admin/items/{id}` - Update item
-  - `DELETE /api/admin/items/{id}` - Delete item
-  - `GET /api/admin/discount-codes` - Get all discount codes
-  - `POST /api/admin/discount-codes` - Create discount code
-  - `PUT /api/admin/discount-codes/{id}` - Update discount code
-  - `DELETE /api/admin/discount-codes/{id}` - Delete discount code
-  - `GET /api/admin/sales` - Get sales items
-  - `POST /api/admin/sales` - Create sales item
-  - `PUT /api/admin/sales/{id}` - Update sales item
-  - `DELETE /api/admin/sales/{id}` - Delete sales item
-
-- **Example API Requests:**
-
-  **User Registration:**
-
-  ```bash
-  curl -X POST http://localhost:8080/api/auth/register \
-    -H "Content-Type: application/json" \
-    -d '{"username":"newuser","password":"password123"}'
-  ```
-
-  **User Login:**
-
-  ```bash
-  curl -X POST http://localhost:8080/api/auth/login \
-    -H "Content-Type: application/json" \
-    -d '{"username":"newuser","password":"password123"}'
-  ```
-
-  **Get Items (Public):**
-
-  ```bash
-  curl http://localhost:8080/api/items
-  ```
-
-  **Add Item to Cart (Requires JWT Token):**
-
-  ```bash
-  curl -X POST http://localhost:8080/api/cart/1/items/1 \
-    -H "Content-Type: application/json" \
-    -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-    -d '{"quantity":2}'
-  ```
-
-  **Place Order (Requires JWT Token):**
-
-  ```bash
-  curl -X POST http://localhost:8080/api/orders/place \
-    -H "Authorization: Bearer YOUR_JWT_TOKEN"
-  ```
-
-- **Authentication & Response Format:**
-
-  **JWT Authentication:**
-
-  - Most endpoints require a JWT token in the `Authorization` header
-  - Format: `Authorization: Bearer <token>`
-  - Tokens are obtained from the login endpoint
-  - Tokens expire after the time specified in `JWT_EXPIRATION`
-
-  **Standard Response Format:**
-
-  ```json
-  {
-    "success": true,
-    "message": "Operation successful",
-    "data": {
-      /* response data */
-    },
-    "timestamp": [2025, 9, 23, 5, 19, 17, 827022010],
-    "pagination": null
-  }
-  ```
-
-  **Error Response Format:**
-
-  ```json
-  {
-    "status": 400,
-    "error": "Bad Request",
-    "message": "Validation failed",
-    "timestamp": [2025, 9, 23, 5, 19, 17, 827022010]
-  }
-  ```
-
-- **Environment Variables:**
-  - `SPRING_DATASOURCE_URL`: JDBC connection string (set by Docker Compose).
-  - `SPRING_DATASOURCE_USERNAME`: Database user (set by Docker Compose).
-  - `SPRING_DATASOURCE_PASSWORD`: Database password (set by Docker Compose).
-  - `JWT_SECRET`: Secret key for signing JWTs.
-  - `JWT_EXPIRATION`: Token expiration time in seconds.
-
-## 🎨 Frontend (React TypeScript)
-
-- **Tech Stack**: React, TypeScript, Vite, Tailwind CSS, Redux Toolkit
-- **Features**: SPA architecture, type-safe API calls, responsive design
-
-## 🗃️ Database
-
-- **Schema Management**: Flyway migrations in `backend/src/main/resources/db/migration/`
-- **Tables**: users, items, orders, carts, cart_items with proper relationships
-- **Seeded Data**: 10 sample products, 2 users, 3 discount codes
-
-## 🛠️ Development Tips
-
-### Backend Development
-
-```bash
-# Run tests
-mvn test
-
-# Check database connection
-docker compose exec db psql -U ecommerce_user -d ecommerce
-
-# View logs
-docker compose logs backend
+```json
+{
+  "success": true,
+  "message": "Operation successful",
+  "data": { ... },
+  "timestamp": [2025, 10, 11, 12, 30, 45, 123456789]
+}
 ```
 
-### Frontend Development
+## 🗄️ Database
+
+**Schema managed by Flyway migrations:**
+
+- `V1__Initial_Schema.sql` - Creates tables: users, items, carts, cart_items, orders, order_items, discount_codes
+- `V2__Make_Email_Optional.sql` - Makes email field optional
+
+**Seeded Data** (from `DataInitializer.java`):
+
+- Admin user: `admin` / `admin123`
+- Regular user: `user` / `password`
+- 10 sample products
+- 3 discount codes
+
+## 🧪 Testing
 
 ```bash
-# Install dependencies
-npm install
+# Backend tests
+cd backend
+./mvnw test
 
-# Development server with hot reload
-npm run dev
-
-# Build for production
+# Frontend type checking
+cd frontend
 npm run build
-
-# Type checking
-npx tsc --noEmit
+npm run lint
 ```
 
-### Database Changes
+## 🌐 Deployment
 
-1. Create migration file: `V3__Add_new_feature.sql`
-2. Add your SQL statements
-3. Restart backend: `docker compose restart backend`
+### Deploy to EC2
 
-### Common Commands
+See `EC2_DEPLOYMENT_README.md` for full AWS deployment instructions.
+
+Quick deploy:
 
 ```bash
-# Restart specific service
-docker compose restart backend
+# SSH into EC2 instance
+ssh -i your-key.pem ubuntu@your-ec2-ip
 
-# View all logs
-docker compose logs
-
-# Clean rebuild
-docker compose down
-docker compose up --build
-
-# Access database
-docker compose exec db psql -U ecommerce_user -d ecommerce
+# Clone and deploy
+git clone https://github.com/hugoev/Ecommerce-Platform.git
+cd Ecommerce-Platform
+docker compose up --build -d
 ```
 
-## 🔧 Environment Variables
+### Environment Variables
 
 Create `.env` file in project root:
 
 ```env
-# Database
 POSTGRES_DB=ecommerce
 POSTGRES_USER=ecommerce_user
 POSTGRES_PASSWORD=ecommerce_password
-
-# JWT
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_SECRET=your-long-secure-secret-key-here
 JWT_EXPIRATION=86400
-```
-
-## 🧪 Testing
-
-### Backend Tests
-
-```bash
-# Run all tests
-mvn test
-
-# Run specific test class
-mvn test -Dtest=UserServiceTest
-
-# Run with coverage
-mvn test jacoco:report
-```
-
-### Frontend Tests
-
-```bash
-# Type checking
-npx tsc --noEmit
-
-# Linting
-npm run lint
-
-# Build test
-npm run build
-```
-
-### API Testing
-
-```bash
-# Test user registration
-curl -X POST http://localhost:8080/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","password":"password123"}'
-
-# Test login
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","password":"password123"}'
-```
-
-## 🔄 Development Workflow
-
-1. **Make changes** to backend or frontend code
-2. **Test locally** using Docker Compose or native development
-3. **Run tests** to ensure nothing is broken
-4. **Commit changes** with descriptive messages
-5. **Push to repository** for deployment
-
-### Git Workflow
-
-```bash
-# Create feature branch
-git checkout -b feature/new-feature
-
-# Make changes and commit
-git add .
-git commit -m "feat: add new feature"
-
-# Push to remote
-git push origin feature/new-feature
-
-# Create pull request
 ```
 
 ## 🐛 Troubleshooting
 
-- **Port conflicts**: Change ports in `docker-compose.yml`
-- **Backend won't start**: Check database is running with `docker compose ps`
-- **Frontend build errors**: Run `npm install` and check TypeScript errors
-- **Database connection**: Verify `.env` file exists and database container is running
-- **JWT token issues**: Check `JWT_SECRET` in `.env` file
-- **CORS errors**: Verify backend CORS configuration in `SecurityConfig.java`
+**Port conflicts:**
+
+```bash
+# Check what's using port 8080
+lsof -ti:8080 | xargs kill -9
+```
+
+**Database connection issues:**
+
+```bash
+# Verify database is running
+docker compose ps
+
+# Check database logs
+docker compose logs db
+```
+
+**Frontend can't connect to backend:**
+
+- Check CORS settings in `SecurityConfig.java`
+- Verify `VITE_API_BASE_URL` environment variable
+
+**Clean rebuild:**
+
+```bash
+docker compose down -v
+docker compose up --build
+```
+
+## 📄 Additional Documentation
+
+- `backend/README.md` - Backend architecture and best practices
+- `frontend/README.md` - Frontend structure and components
+- `FRONTEND_API_GUIDE.md` - Detailed API integration guide
+- `EC2_DEPLOYMENT_README.md` - AWS deployment guide
+- `INFO.md` - Original project requirements
+
+## 👥 Team Members
+
+**Group 7: The Devs**
+
+- Hugo Villarreal
+- Boyu Chen
+- Ian Hankinson
+- Gerald Lopez
+- Oluwafunso Olugbemi
+- Miguel Rodriguez
+
+**Course:** CS 3773-001 Software Engineering  
+**Institution:** The University of Texas at San Antonio  
+**Date:** Fall 2025
+
+## 📝 License
+
+This project is for educational purposes as part of a university software engineering course.
+
+---
+
+**Need Help?** Check the troubleshooting section above or review the additional documentation files.

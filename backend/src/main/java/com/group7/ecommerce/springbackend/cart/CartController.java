@@ -116,8 +116,8 @@ public class CartController {
     public ResponseEntity<CartDto> clearCart() {
         try {
             User user = getCurrentUser();
-            Cart cart = cartService.clearCart(user.getId());
-            CartDto cartDto = cartService.convertToDto(cart);
+            cartService.clearCart(user.getId());
+            CartDto cartDto = cartService.getCartAsDto(user.getId());
             return ResponseEntity.ok(cartDto);
         } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();

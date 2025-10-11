@@ -10,7 +10,7 @@ import { useAdminDiscounts } from "@/hooks/useAdminDiscounts";
 import { useAdminOrders } from "@/hooks/useAdminOrders";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
 import { useItems } from "@/hooks/useItems";
-import { useSales } from "@/hooks/useSales";
+// import { useSales } from "@/hooks/useSales"; // Commented out - backend not implemented
 import { DollarSign, Edit, Loader2, Package, Plus, ShoppingCart, Trash2, Upload, Users } from "lucide-react";
 import { useState } from "react";
 
@@ -19,7 +19,7 @@ export function AdminDashboard() {
   const { orders: adminOrders, updateOrderStatus } = useAdminOrders();
   const { users } = useAdminUsers();
   const { discountCodes, createDiscountCode } = useAdminDiscounts();
-  const { salesItems, createSalesItem } = useSales();
+  // const { salesItems, createSalesItem } = useSales(); // Commented out - backend not implemented
 
   // Calculate stats from real data
   const stats = {
@@ -177,26 +177,29 @@ export function AdminDashboard() {
 
     try {
       // For now, we'll create a sale for the first item as an example
+      // Sales API not implemented in backend yet
       // In a real implementation, you'd select specific items or categories
-      if (items.length > 0) {
-        const discountPercentage = parseFloat(salesForm.discount);
-        const salePrice = items[0].price * (1 - discountPercentage / 100);
+      // if (items.length > 0) {
+      //   const discountPercentage = parseFloat(salesForm.discount);
+      //   const salePrice = items[0].price * (1 - discountPercentage / 100);
 
-        await createSalesItem({
-          itemId: items[0].id,
-          salePrice,
-          saleStartDate: new Date().toISOString(),
-          saleEndDate: new Date(Date.now() + parseInt(salesForm.duration) * 24 * 60 * 60 * 1000).toISOString()
-        });
+      //   await createSalesItem({
+      //     itemId: items[0].id,
+      //     salePrice,
+      //     saleStartDate: new Date().toISOString(),
+      //     saleEndDate: new Date(Date.now() + parseInt(salesForm.duration) * 24 * 60 * 60 * 1000).toISOString()
+      //   });
 
-        setSalesForm({
-          name: '',
-          discount: '',
-          productSelection: 'all',
-          duration: ''
-        });
-        setShowSalesDialog(false);
-      }
+      //   setSalesForm({
+      //     name: '',
+      //     discount: '',
+      //     productSelection: 'all',
+      //     duration: ''
+      //   });
+      //   setShowSalesDialog(false);
+      // }
+      alert('Sales API not yet implemented in backend');
+      setShowSalesDialog(false);
     } catch (error) {
       console.error('Failed to create sale:', error);
     }
@@ -484,7 +487,8 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="max-h-64 overflow-y-auto space-y-2">
-              {salesItems.map((sale) => (
+              {/* Sales API not implemented - commented out */}
+              {/* {salesItems.map((sale) => (
                 <div key={sale.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex-1">
                     <div className="font-medium">{sale.title}</div>
@@ -509,12 +513,12 @@ export function AdminDashboard() {
                     </div>
                   </div>
                 </div>
-              ))}
-              {salesItems.length === 0 && (
-                <div className="text-center text-muted-foreground py-8">
-                  No active sales. Create your first sale to get started.
-                </div>
-              )}
+              ))} */}
+              <div className="text-center text-muted-foreground py-8">
+                Sales API not yet implemented in backend.
+                <br />
+                Use item's "onSale" and "discountedPrice" fields for now.
+              </div>
             </div>
           </CardContent>
         </Card>
