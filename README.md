@@ -4,8 +4,48 @@ A full-stack online shopping platform built with React, TypeScript, Spring Boot,
 
 ## 🚀 Quick Start
 
+### Prerequisites
+
+- **Docker & Docker Compose** (required)
+- **Git** (to clone the repository)
+
+### What is Docker?
+
+Docker is like a "virtual computer" that runs inside your computer. It automatically:
+
+- Downloads and installs all the software needed (Java, Node.js, PostgreSQL)
+- Sets up the database with sample data
+- Builds and runs the website and API
+- Connects everything together
+
+**Think of it as a "one-click setup" that handles all the complex installation for you!**
+
+### System Requirements
+
+- **RAM**: 4GB minimum, 8GB recommended
+- **Storage**: 2GB free space
+- **OS**: Windows 10+, macOS 10.15+, or Linux (Ubuntu 18.04+)
+
+### Installing Docker
+
+**Windows/macOS**: Download Docker Desktop from [docker.com](https://www.docker.com/products/docker-desktop/)
+
+**Linux (Ubuntu/Debian)**:
+
 ```bash
-# Clone the repository
+# Install Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+# Install Docker Compose
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+```
+
+### Step 1: Clone and Start
+
+```bash
+# Clone the repository (downloads the code to your computer)
 git clone https://github.com/hugoev/Ecommerce-Platform.git
 cd Ecommerce-Platform
 
@@ -13,16 +53,98 @@ cd Ecommerce-Platform
 docker compose up --build
 ```
 
-**Access the application:**
+**What this command does:**
 
-- 🌐 **Frontend**: http://localhost:5173
-- 🔧 **Backend API**: http://localhost:8080
-- 🗄️ **Database**: PostgreSQL on localhost:5432
+- `git clone` - Downloads the project code from GitHub to your computer
+- `cd Ecommerce-Platform` - Moves you into the project folder
+- `docker compose up` - Starts all the services (database, backend, frontend)
+- `--build` - Forces Docker to rebuild everything from scratch (like a fresh install)
+- This will download and install everything needed automatically - no manual setup required!
+
+### Step 2: Wait for Services to Start
+
+**What's happening:** Docker is downloading and setting up everything needed to run the application.
+
+The first run will take 2-5 minutes as Docker:
+
+- Downloads the database (PostgreSQL)
+- Downloads Java and builds the backend API
+- Downloads Node.js and builds the frontend website
+- Sets up all the connections between services
+
+You'll see output like:
+
+```
+✅ Database: Starting PostgreSQL
+✅ Backend: Building Spring Boot application
+✅ Frontend: Building React application
+✅ All services: Ready!
+```
+
+**Don't worry if it takes a while - this is normal for the first time!**
+
+### Step 3: Access the Application
+
+Once all containers are running, you can access:
+
+- 🌐 **Frontend** (the website): http://localhost:5173
+  - This is the main application you'll use in your browser
+- 🔧 **Backend API** (the server): http://localhost:8080
+  - This handles data and business logic (you won't use this directly)
+- 🗄️ **Database** (data storage): PostgreSQL on localhost:5432
+  - This stores all the application data (you won't use this directly)
+
+**Just open your web browser and go to http://localhost:5173 to use the application!**
+
+### Step 4: Login
 
 **Default Admin Credentials:**
 
 - Username: `admin`
 - Password: `admin123`
+
+**Test User:**
+
+- Username: `user`
+- Password: `password`
+
+### Step 5: You're Ready!
+
+🎉 **Congratulations!** You now have a fully functional e-commerce application running on your computer.
+
+**What you can do:**
+
+- Browse products as a customer
+- Add items to cart and checkout
+- Login as admin to manage products and users
+- The application has sample data already loaded
+
+**To stop the application:** Press `Ctrl+C` in the terminal where it's running
+**To start it again:** Run `docker compose up --build` from the project folder
+
+> 💡 **Tip**: If the frontend shows a blank page, wait a few more seconds for the backend to fully start up.
+
+## 🆘 Common Issues for Beginners
+
+### "Command not found" errors
+
+- **Docker not installed**: Follow the installation steps in the Prerequisites section
+- **Git not installed**: Download from [git-scm.com](https://git-scm.com/)
+
+### "Port already in use" error
+
+- Something else is using the same ports
+- **Solution**: Close other applications or restart your computer
+
+### Application won't start
+
+- Make sure Docker Desktop is running (Windows/macOS)
+- Try running `docker compose down` then `docker compose up --build` again
+
+### Still having trouble?
+
+- Check the detailed troubleshooting section below
+- Make sure your computer meets the system requirements
 
 ## 📋 Features
 
@@ -108,23 +230,27 @@ Ecommerce-Platform/
 
 ## 🔧 Development Setup
 
-### Prerequisites
-
-- Docker & Docker Compose
-- (Optional) Java 17, Node.js 18+, PostgreSQL 15
-
 ### Option 1: Docker (Recommended)
 
-```bash
-docker compose up --build
-```
+Everything runs in containers - no local dependencies needed.
 
-Everything runs in containers - frontend, backend, and database.
+```bash
+# Start all services
+docker compose up --build
+
+# Run in background
+docker compose up --build -d
+
+# Stop services
+docker compose down
+```
 
 ### Option 2: Local Development
 
+For development with hot reload:
+
 ```bash
-# 1. Start PostgreSQL
+# 1. Start only the database
 docker compose up -d db
 
 # 2. Start Backend (Terminal 1)
@@ -136,6 +262,12 @@ cd frontend
 npm install
 npm run dev
 ```
+
+**Prerequisites for Local Development:**
+
+- Java 17+
+- Node.js 18+
+- Maven (or use ./mvnw wrapper)
 
 ## 🔐 API Endpoints
 
@@ -244,14 +376,58 @@ JWT_EXPIRATION=86400
 
 ## 🐛 Troubleshooting
 
-**Port conflicts:**
+### Port Conflicts
+
+If you get "port is already allocated" errors:
+
+**macOS/Linux:**
 
 ```bash
-# Check what's using port 8080
-lsof -ti:8080 | xargs kill -9
+# Check what's using the ports
+lsof -i :5432 -i :8080 -i :5173
+
+# Kill processes using these ports
+sudo lsof -ti:5432 | xargs kill -9
+sudo lsof -ti:8080 | xargs kill -9
+sudo lsof -ti:5173 | xargs kill -9
 ```
 
-**Database connection issues:**
+**Windows (PowerShell):**
+
+```powershell
+# Check what's using the ports
+netstat -ano | findstr :5432
+netstat -ano | findstr :8080
+netstat -ano | findstr :5173
+
+# Kill processes (replace PID with actual process ID)
+taskkill /PID <PID> /F
+```
+
+**Universal Solution:**
+
+```bash
+# Stop all Docker containers
+docker stop $(docker ps -q)
+```
+
+### Docker Issues
+
+```bash
+# Clean rebuild (removes volumes and rebuilds)
+docker compose down -v
+docker compose up --build
+
+# Check container status
+docker compose ps
+
+# View logs
+docker compose logs backend
+docker compose logs frontend
+docker compose logs db
+```
+
+### Database Connection Issues
 
 ```bash
 # Verify database is running
@@ -259,19 +435,64 @@ docker compose ps
 
 # Check database logs
 docker compose logs db
+
+# Connect to database directly
+docker compose exec db psql -U ecommerce_user -d ecommerce
 ```
 
-**Frontend can't connect to backend:**
+### Frontend Can't Connect to Backend
 
-- Check CORS settings in `SecurityConfig.java`
-- Verify `VITE_API_BASE_URL` environment variable
+- Ensure backend is running: `docker compose ps`
+- Check backend logs: `docker compose logs backend`
+- Verify CORS settings in `SecurityConfig.java`
+- Check if `VITE_API_BASE_URL` environment variable is set
 
-**Clean rebuild:**
+### Common Solutions
 
 ```bash
+# Reset everything
 docker compose down -v
+docker system prune -f
 docker compose up --build
+
+# Check if all services are healthy
+curl http://localhost:8080/api/items
+curl http://localhost:5173
 ```
+
+### Docker Not Installed?
+
+If you don't have Docker installed:
+
+1. **Windows**: Download Docker Desktop from [docker.com](https://www.docker.com/products/docker-desktop/)
+2. **macOS**: Download Docker Desktop from [docker.com](https://www.docker.com/products/docker-desktop/)
+3. **Linux**: Follow the installation commands in the Prerequisites section above
+
+### Verification Steps
+
+After running `docker compose up --build`, verify everything is working:
+
+```bash
+# 1. Check all containers are running
+docker compose ps
+
+# 2. Test backend API
+curl http://localhost:8080/api/items
+
+# 3. Test frontend
+curl http://localhost:5173
+
+# 4. Check logs if something's wrong
+docker compose logs backend
+docker compose logs frontend
+```
+
+### Still Having Issues?
+
+1. Make sure Docker Desktop is running (Windows/macOS)
+2. Try restarting Docker Desktop
+3. Check if you have enough disk space (need ~2GB)
+4. Ensure your system meets the minimum requirements
 
 ## 📄 Additional Documentation
 
