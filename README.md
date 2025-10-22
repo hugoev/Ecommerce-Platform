@@ -49,6 +49,15 @@ sudo chmod +x /usr/local/bin/docker-compose
 git clone https://github.com/hugoev/Ecommerce-Platform.git
 cd Ecommerce-Platform
 
+# Create environment file (required for Docker)
+# Copy the example environment file
+# Linux/macOS:
+cp .env.example .env
+# Windows (PowerShell):
+# Copy-Item .env.example .env
+# Windows (Command Prompt):
+# copy .env.example .env
+
 # Start all services with Docker Compose
 docker compose up --build
 ```
@@ -57,6 +66,7 @@ docker compose up --build
 
 - `git clone` - Downloads the project code from GitHub to your computer
 - `cd Ecommerce-Platform` - Moves you into the project folder
+- `cp .env.example .env` - Copies the example environment file with default settings
 - `docker compose up` - Starts all the services (database, backend, frontend)
 - `--build` - Forces Docker to rebuild everything from scratch (like a fresh install)
 - This will download and install everything needed automatically - no manual setup required!
@@ -98,15 +108,31 @@ Once all containers are running, you can access:
 
 ### Step 4: Login
 
+**The application comes with pre-loaded sample data:**
+
+- **10 sample products** across different categories (Electronics, Books, Home & Garden, Sports)
+- **4 users** ready to use
+- **4 discount codes** for testing
+
 **Default Admin Credentials:**
 
 - Username: `admin`
 - Password: `admin123`
 
-**Test User:**
+**Test Users:**
 
-- Username: `user`
-- Password: `password`
+- Username: `john_doe` / Password: `password123`
+- Username: `jane_smith` / Password: `password123`
+- Username: `bob_wilson` / Password: `password123`
+
+**Sample Discount Codes:**
+
+- `WELCOME10` - 10% off
+- `SUMMER20` - 20% off
+- `STUDENT15` - 15% off
+- `EXPIRED5` - 5% off (expired for testing)
+
+> 💡 **Note**: The application uses external image URLs for sample products. If you upload custom images, they will be stored in the `backend/uploads/images/` directory and persist between Docker restarts.
 
 ### Step 5: You're Ready!
 
