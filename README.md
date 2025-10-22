@@ -50,7 +50,7 @@ git clone https://github.com/hugoev/Ecommerce-Platform.git
 cd Ecommerce-Platform
 
 # Create environment file (required for Docker)
-# Copy the example environment file
+# Copy the example environment file with proper JWT secret
 # Linux/macOS:
 cp .env.example .env
 # Windows (PowerShell):
@@ -390,15 +390,27 @@ docker compose up --build -d
 
 ### Environment Variables
 
-Create `.env` file in project root:
+Create `.env` file in project root by copying the example:
+
+```bash
+cp .env.example .env
+```
+
+The `.env.example` file contains:
 
 ```env
+# Database Configuration
 POSTGRES_DB=ecommerce
 POSTGRES_USER=ecommerce_user
 POSTGRES_PASSWORD=ecommerce_password
-JWT_SECRET=your-long-secure-secret-key-here
+
+# JWT Configuration
+# Note: JWT_SECRET must be at least 64 characters (512 bits) for HS512 algorithm
+JWT_SECRET=eFZnij2luHbDudpVLguWd6JVGVXzAIhG2KGUUh2c5ZF168Lv3o54x/5SzxAik0VLEUGNYtD5ih6Cv00FzRgb5Q==
 JWT_EXPIRATION=86400
 ```
+
+**Important**: The JWT_SECRET must be at least 64 characters long for the HS512 algorithm to work properly.
 
 ## 🐛 Troubleshooting
 
