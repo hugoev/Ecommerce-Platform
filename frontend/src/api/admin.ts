@@ -144,6 +144,34 @@ const apiService = {
 
     return response.json();
   },
+
+  async delete<T>(endpoint: string): Promise<T> {
+    const token = localStorage.getItem('token');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+      method: 'DELETE',
+      headers: headers,
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized - Admin access required');
+      }
+      if (response.status === 403) {
+        throw new Error('Forbidden - Admin privileges required');
+      }
+      const errorData = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(errorData.message || 'An unknown error occurred');
+    }
+
+    return response.json();
+  },
 };
 
 export const adminApi = {

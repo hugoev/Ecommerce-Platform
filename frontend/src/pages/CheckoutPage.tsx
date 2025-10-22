@@ -45,7 +45,7 @@ export function CheckoutPage() {
 
     setIsPlacingOrder(true);
     try {
-      await placeOrder();
+      await placeOrder(userId);
       alert("Order placed successfully!");
       navigate("/orders");
     } catch (error) {

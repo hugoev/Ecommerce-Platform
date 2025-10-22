@@ -32,7 +32,7 @@ export function useCart(): UseCartState & UseCartActions {
     // but we can add logic here if needed
   }, []);
 
-  const fetchCart = useCallback(async (userId?: number) => {
+  const fetchCart = useCallback(async (_userId?: number) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {

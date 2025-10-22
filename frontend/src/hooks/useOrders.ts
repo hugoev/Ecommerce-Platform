@@ -1,6 +1,6 @@
 import { orderHelpers, ordersApi } from '@/api/orders';
 import type { Order } from '@/types';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 interface UseOrdersState {
   orders: Order[];
@@ -9,8 +9,8 @@ interface UseOrdersState {
 }
 
 interface UseOrdersActions {
-  fetchOrders: () => Promise<void>;
-  placeOrder: () => Promise<Order | null>;
+  fetchOrders: (userId: number) => Promise<void>;
+  placeOrder: (userId: number) => Promise<Order | null>;
   updateOrderStatus: (orderId: number, status: string) => Promise<void>;
   clearError: () => void;
 }
@@ -20,11 +20,11 @@ export function useOrders(): UseOrdersState & UseOrdersActions {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (userId: number) => {
     try {
       setLoading(true);
       setError(null);
-      const orderResponses = await ordersApi.getUserOrders();
+      const orderResponses = await ordersApi.getUserOrders(userId);
       const convertedOrders = orderResponses.map(orderHelpers.fromBackend);
       setOrders(convertedOrders);
     } catch (err) {
@@ -34,11 +34,11 @@ export function useOrders(): UseOrdersState & UseOrdersActions {
     }
   };
 
-  const placeOrder = async (): Promise<Order | null> => {
+  const placeOrder = async (userId: number): Promise<Order | null> => {
     try {
       setLoading(true);
       setError(null);
-      const orderResponse = await ordersApi.placeOrder();
+      const orderResponse = await ordersApi.placeOrder(userId);
       const newOrder = orderHelpers.fromBackend(orderResponse);
       setOrders(prev => [newOrder, ...prev]);
       return newOrder;
@@ -67,10 +67,6 @@ export function useOrders(): UseOrdersState & UseOrdersActions {
   };
 
   const clearError = () => setError(null);
-
-  useEffect(() => {
-    fetchOrders();
-  }, []);
 
   return {
     orders,

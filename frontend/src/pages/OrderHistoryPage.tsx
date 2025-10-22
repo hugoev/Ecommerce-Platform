@@ -8,6 +8,9 @@ import { useState } from "react";
 export function OrderHistoryPage() {
   const [sortBy, setSortBy] = useState("date-desc");
   const { orders, loading, error, fetchOrders } = useOrders();
+  
+  // For demo purposes, using userId = 1 (you would get this from auth context)
+  const userId = 1;
 
   // Sort orders based on selected criteria
   const sortedOrders = [...orders].sort((a, b) => {
@@ -56,7 +59,7 @@ export function OrderHistoryPage() {
         <div className="text-center">
           <h1 className="text-4xl font-bold mb-2">Order History</h1>
           <p className="text-red-600 mb-4">Error: {error}</p>
-          <Button onClick={fetchOrders}>Try Again</Button>
+          <Button onClick={() => fetchOrders(userId)}>Try Again</Button>
         </div>
       </div>
     );

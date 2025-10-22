@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { authApi } from '@/api/auth';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { authApi } from '@/api/auth';
+import { useState } from 'react';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -26,7 +26,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess, message }: LoginMo
     setError('');
 
     try {
-      const loginResponse = await authApi.login(credentials);
+      await authApi.login(credentials);
 
       // If user had guest cart items, we could transfer them here
       // For now, just close the modal and call success callback

@@ -191,7 +191,7 @@ export const cartApi = {
   },
 
   // Add item to cart (handles both authenticated and guest users)
-  async addItem(userId: number, itemId: number, quantity: number): Promise<void> {
+  async addItem(_userId: number, itemId: number, quantity: number): Promise<void> {
     try {
       // Try authenticated cart first
       await apiService.post<void, AddItemRequest>(`/api/cart/items/${itemId}`, { quantity });
@@ -207,32 +207,32 @@ export const cartApi = {
   },
 
   // Update item quantity
-  updateQuantity(userId: number, itemId: number, quantity: number): Promise<void> {
+  updateQuantity(_userId: number, itemId: number, quantity: number): Promise<void> {
     return apiService.put<void, UpdateQuantityRequest>(`/api/cart/items/${itemId}`, { quantity });
   },
 
   // Remove item from cart
-  removeItem(userId: number, itemId: number): Promise<void> {
+  removeItem(_userId: number, itemId: number): Promise<void> {
     return apiService.delete(`/api/cart/items/${itemId}`);
   },
 
   // Clear entire cart
-  clearCart(userId: number): Promise<void> {
+  clearCart(_userId: number): Promise<void> {
     return apiService.delete(`/api/cart`);
   },
 
   // Increase item quantity
-  increaseQuantity(userId: number, itemId: number, amount: number): Promise<void> {
+  increaseQuantity(_userId: number, itemId: number, amount: number): Promise<void> {
     return apiService.post<void, ChangeQuantityRequest>(`/api/cart/items/${itemId}/increase`, { amount });
   },
 
   // Decrease item quantity
-  decreaseQuantity(userId: number, itemId: number, amount: number): Promise<void> {
+  decreaseQuantity(_userId: number, itemId: number, amount: number): Promise<void> {
     return apiService.post<void, ChangeQuantityRequest>(`/api/cart/items/${itemId}/decrease`, { amount });
   },
 
   // Apply discount code
-  applyDiscount(userId: number, discountCode: string): Promise<CartResponse> {
+  applyDiscount(_userId: number, discountCode: string): Promise<CartResponse> {
     return apiService.post<CartResponse, ApplyDiscountRequest>(`/api/cart/discount`, { discountCode });
   },
 
