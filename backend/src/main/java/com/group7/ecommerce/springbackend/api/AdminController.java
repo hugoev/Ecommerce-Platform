@@ -70,4 +70,28 @@ public class AdminController {
     public Page<Order> getAllOrders(Pageable pageable) {
         return orderRepository.findAll(pageable);
     }
+
+    //  Change a user's role (ROLE_USER / ROLE_ADMIN)
+// ✅ Change a user's role (ROLE_USER / ROLE_ADMIN)
+@PostMapping("/users/{id}/role")
+public ResponseEntity<User> changeUserRole(
+        @PathVariable Long id,
+        @org.springframework.web.bind.annotation.RequestParam com.group7.ecommerce.springbackend.user.User.Role role
+) {
+    User u = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+    u.setRole(role);
+    return ResponseEntity.ok(userRepository.save(u));
+}
+
+// ✅ Change an order's status (e.g., PENDING → PAID)
+@PostMapping("/orders/{id}/status")
+public ResponseEntity<Order> changeOrderStatus(
+        @PathVariable Long id,
+        @org.springframework.web.bind.annotation.RequestParam com.group7.ecommerce.springbackend.order.Order.OrderStatus status
+) {
+    Order o = orderRepository.findById(id).orElseThrow(() -> new RuntimeException("Order not found"));
+    o.setStatus(status);
+    return ResponseEntity.ok(orderRepository.save(o));
+}
+
 }
