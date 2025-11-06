@@ -1,5 +1,9 @@
 package com.group7.ecommerce.springbackend.item;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.NoSuchElementException;
 
 import org.springframework.data.domain.Page;
@@ -39,6 +43,38 @@ public class ItemService {
         if (!repo.existsById(id)) {
             throw new NoSuchElementException("Item " + id + " not found");
         }
+        
+        // Get the item to access its imageUrl before deletion
+        Item item = repo.findById(id).orElseThrow(() -> new NoSuchElementException("Item " + id + " not found"));
+        
+        // Delete the image file if it's a local upload
+        if (item.getImageUrl() != null) {
+            try {
+                String filename = null;
+                
+                // Handle relative URL (e.g., "/images/uuid.jpg")
+                if (item.getImageUrl().startsWith("/images/")) {
+                    filename = item.getImageUrl().substring("/images/".length());
+                }
+                // Handle absolute URL (e.g., "http://localhost:8080/images/uuid.jpg")
+                else if (item.getImageUrl().contains("/images/")) {
+                    int imagesIndex = item.getImageUrl().lastIndexOf("/images/");
+                    filename = item.getImageUrl().substring(imagesIndex + "/images/".length());
+                }
+                
+                // Delete the file if we found a local filename
+                if (filename != null && !filename.isEmpty()) {
+                    Path imagePath = Paths.get("uploads/images/", filename);
+                    if (Files.exists(imagePath)) {
+                        Files.delete(imagePath);
+                    }
+                }
+            } catch (IOException e) {
+                // Log the error but don't fail the deletion if file deletion fails
+                System.err.println("Failed to delete image file for item " + id + ": " + e.getMessage());
+            }
+        }
+        
         // Delete all related sales items first to avoid foreign key constraint violation
         salesItemRepository.deleteByItemId(id);
         repo.deleteById(id);
