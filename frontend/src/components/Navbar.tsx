@@ -1,14 +1,23 @@
 import type { RootState } from '@/app/store';
+import { logout } from '@/app/features/auth/authSlice';
 import { ChevronDown, User } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 
 const Navbar = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleLogout = () => {
+    dispatch(logout());
+    setIsDropdownOpen(false);
+    navigate('/');
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -71,10 +80,12 @@ const Navbar = () => {
                       >
                         Admin Dashboard
                       </Link>
-                      <div className="px-4 py-2 text-sm hover:bg-hover text-foreground cursor-pointer">
-                        Settings
-                      </div>
-                      <div className="px-4 py-2 text-sm hover:bg-hover text-foreground cursor-pointer">
+                      <div 
+                        className="px-4 py-2 text-sm hover:bg-hover text-foreground cursor-pointer"
+                        onClick={() => {
+                          handleLogout();
+                        }}
+                      >
                         Logout
                       </div>
                     </div>

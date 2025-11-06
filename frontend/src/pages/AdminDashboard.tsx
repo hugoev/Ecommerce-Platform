@@ -10,16 +10,50 @@ import { useAdminDiscounts } from "@/hooks/useAdminDiscounts";
 import { useAdminOrders } from "@/hooks/useAdminOrders";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
 import { useItems } from "@/hooks/useItems";
-// import { useSales } from "@/hooks/useSales"; // Commented out - backend not implemented
+import { useSales } from "@/hooks/useSales";
+import { adminApi } from "@/api/admin";
 import { DollarSign, Edit, Loader2, Package, Plus, ShoppingCart, Trash2, Upload, Users } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import type { RootState } from "@/app/store";
 
 export function AdminDashboard() {
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const token = localStorage.getItem('token');
+
+  // Check authentication and admin role
+  useEffect(() => {
+    if (!isAuthenticated || !token) {
+      alert('Please log in to access the admin dashboard');
+      navigate('/login');
+      return;
+    }
+    
+    if (user?.role !== 'ROLE_ADMIN') {
+      alert('Admin access required');
+      navigate('/');
+      return;
+    }
+  }, [isAuthenticated, token, user, navigate]);
+
+  // Early return if not authenticated or not admin
+  if (!isAuthenticated || !token || user?.role !== 'ROLE_ADMIN') {
+    return (
+      <div className="container py-12 px-4 max-w-7xl mx-auto text-center">
+        <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+        <p className="text-muted-foreground mb-4">Please log in as an administrator to access this page.</p>
+        <Button onClick={() => navigate('/login')}>Go to Login</Button>
+      </div>
+    );
+  }
+
   const { items, loading, error, createItem, updateItem, deleteItem } = useItems();
-  const { orders: adminOrders, updateOrderStatus } = useAdminOrders();
-  const { users } = useAdminUsers();
+  const { orders: adminOrders, updateOrderStatus, fetchAllOrders } = useAdminOrders();
+  const { users, fetchUsers } = useAdminUsers();
   const { discountCodes, createDiscountCode } = useAdminDiscounts();
-  // const { salesItems, createSalesItem } = useSales(); // Commented out - backend not implemented
+  const { salesItems, loading: salesLoading, createSalesItem, updateSalesItem, deleteSalesItem, toggleActive: toggleSalesActive } = useSales();
 
   // Calculate stats from real data
   const stats = {
@@ -140,8 +174,11 @@ export function AdminDashboard() {
     try {
       await updateOrderStatus(orderId, newStatus);
       setEditingOrderStatus(null);
+      // Refresh orders to get updated data
+      await fetchAllOrders();
     } catch (error) {
       console.error('Failed to update order status:', error);
+      alert(`Failed to update order status: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -153,10 +190,20 @@ export function AdminDashboard() {
         ? parseFloat(discountForm.discountValue)
         : (parseFloat(discountForm.discountValue) / 100); // Convert fixed amount to percentage
 
+      // Convert date string (YYYY-MM-DD) to ISO datetime string (YYYY-MM-DDTHH:mm:ss.sssZ)
+      // Set time to end of day (23:59:59) in UTC to avoid timezone issues
+      let expiryDate: string | undefined = undefined;
+      if (discountForm.expiryDate) {
+        // Parse date string and set to end of day in UTC
+        const [year, month, day] = discountForm.expiryDate.split('-').map(Number);
+        const date = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+        expiryDate = date.toISOString();
+      }
+
       await createDiscountCode({
         code: discountForm.code,
         discountPercentage,
-        expiryDate: discountForm.expiryDate || undefined,
+        expiryDate,
         active: true
       });
 
@@ -176,42 +223,68 @@ export function AdminDashboard() {
     e.preventDefault();
 
     try {
-      // For now, we'll create a sale for the first item as an example
-      // Sales API not implemented in backend yet
-      // In a real implementation, you'd select specific items or categories
-      // if (items.length > 0) {
-      //   const discountPercentage = parseFloat(salesForm.discount);
-      //   const salePrice = items[0].price * (1 - discountPercentage / 100);
+      if (items.length === 0) {
+        alert('No items available to create a sale');
+        return;
+      }
 
-      //   await createSalesItem({
-      //     itemId: items[0].id,
-      //     salePrice,
-      //     saleStartDate: new Date().toISOString(),
-      //     saleEndDate: new Date(Date.now() + parseInt(salesForm.duration) * 24 * 60 * 60 * 1000).toISOString()
-      //   });
+      // Find the first item or allow selection
+      const selectedItem = items[0]; // In a real implementation, allow item selection
+      const discountPercentage = parseFloat(salesForm.discount);
+      const salePrice = selectedItem.price * (1 - discountPercentage / 100);
+      const durationDays = parseInt(salesForm.duration) || 7;
 
-      //   setSalesForm({
-      //     name: '',
-      //     discount: '',
-      //     productSelection: 'all',
-      //     duration: ''
-      //   });
-      //   setShowSalesDialog(false);
-      // }
-      alert('Sales API not yet implemented in backend');
+      await createSalesItem({
+        itemId: selectedItem.id,
+        salePrice: salePrice,
+        saleStartDate: new Date().toISOString(),
+        saleEndDate: new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString()
+      });
+
+      setSalesForm({
+        name: '',
+        discount: '',
+        productSelection: 'all',
+        duration: ''
+      });
       setShowSalesDialog(false);
+      alert('Sale created successfully!');
     } catch (error) {
       console.error('Failed to create sale:', error);
+      alert(`Failed to create sale: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
   const handleUserAction = async () => {
     if (!selectedUserAction || !userSearch) return;
 
-    // For now, we'll just log the action
-    // In a real implementation, this would perform the selected action on the searched user
-    console.log('User action:', selectedUserAction, 'on user:', userSearch);
-    alert(`Action "${selectedUserAction}" would be performed on user "${userSearch}"`);
+    const user = users.find(u => u.username === userSearch || u.fullName.toLowerCase().includes(userSearch.toLowerCase()));
+    if (!user) {
+      alert('User not found');
+      return;
+    }
+
+    try {
+      switch (selectedUserAction) {
+        case 'deactivate':
+          await adminApi.deactivateUser(user.id);
+          alert('User deactivated successfully');
+          break;
+        case 'delete':
+          if (confirm(`Are you sure you want to delete user ${user.fullName}?`)) {
+            await adminApi.deleteUser(user.id);
+            alert('User deleted successfully');
+          }
+          break;
+        default:
+          alert(`Action "${selectedUserAction}" - Please use the Edit button for user modifications`);
+      }
+      // Refresh users list
+      await fetchUsers();
+    } catch (error) {
+      console.error('Failed to perform user action:', error);
+      alert(`Failed to ${selectedUserAction} user: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   // Get filtered and sorted orders
@@ -417,6 +490,31 @@ export function AdminDashboard() {
               <DialogTitle>Create Discount Code</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreateDiscountCode} className="space-y-4">
+              <div className="mb-4 flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const demoCodes = [
+                      { code: 'DEMO25', discountType: 'percentage', discountValue: '25', expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() },
+                      { code: 'SAVE15', discountType: 'percentage', discountValue: '15', expiryDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString() },
+                      { code: 'WELCOME10', discountType: 'percentage', discountValue: '10', expiryDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString() },
+                    ];
+                    const randomCode = demoCodes[Math.floor(Math.random() * demoCodes.length)];
+                    // Convert ISO string to date input format (YYYY-MM-DD) for display, but store full ISO string
+                    const dateForInput = randomCode.expiryDate.split('T')[0];
+                    setDiscountForm({
+                      code: randomCode.code,
+                      discountType: randomCode.discountType as 'percentage' | 'fixed',
+                      discountValue: randomCode.discountValue,
+                      expiryDate: dateForInput // Store date-only for the input field
+                    });
+                  }}
+                >
+                  🎯 Fill Demo Data
+                </Button>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="discount-code">Discount Code</Label>
                 <Input
@@ -487,38 +585,57 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="max-h-64 overflow-y-auto space-y-2">
-              {/* Sales API not implemented - commented out */}
-              {/* {salesItems.map((sale) => (
-                <div key={sale.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="font-medium">{sale.title}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {new Date(sale.saleStartDate).toLocaleDateString()} - {new Date(sale.saleEndDate).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <div className="text-sm line-through text-muted-foreground">${sale.originalPrice.toFixed(2)}</div>
-                      <div className="text-green-600 font-bold">${sale.salePrice.toFixed(2)}</div>
-                    </div>
-                    <span className="text-sm">{sale.discountPercentage}% off</span>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      sale.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {sale.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="outline">Edit</Button>
-                      <Button size="sm" variant="outline">Toggle</Button>
-                    </div>
-                  </div>
+              {salesLoading ? (
+                <div className="text-center text-muted-foreground py-8">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                  Loading sales items...
                 </div>
-              ))} */}
-              <div className="text-center text-muted-foreground py-8">
-                Sales API not yet implemented in backend.
-                <br />
-                Use item's "onSale" and "discountedPrice" fields for now.
-              </div>
+              ) : salesItems.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">
+                  No sales items yet. Create your first sale to get started.
+                </div>
+              ) : (
+                salesItems.map((sale) => (
+                  <div key={sale.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex-1">
+                      <div className="font-medium">{sale.title}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {new Date(sale.saleStartDate).toLocaleDateString()} - {new Date(sale.saleEndDate).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="text-sm line-through text-muted-foreground">${sale.originalPrice.toFixed(2)}</div>
+                        <div className="text-green-600 font-bold">${sale.salePrice.toFixed(2)}</div>
+                      </div>
+                      <span className="text-sm">{sale.discountPercentage.toFixed(0)}% off</span>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        sale.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {sale.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="outline" onClick={async () => {
+                          try {
+                            await toggleSalesActive(sale.id);
+                          } catch (error) {
+                            console.error('Failed to toggle sale:', error);
+                          }
+                        }}>Toggle</Button>
+                        <Button size="sm" variant="outline" onClick={async () => {
+                          if (confirm('Are you sure you want to delete this sale?')) {
+                            try {
+                              await deleteSalesItem(sale.id);
+                            } catch (error) {
+                              console.error('Failed to delete sale:', error);
+                            }
+                          }
+                        }}>Delete</Button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -530,6 +647,32 @@ export function AdminDashboard() {
               <DialogTitle>Create Sale/Promotion</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreateSale} className="space-y-4">
+              <div className="mb-4 flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (items.length === 0) {
+                      alert('Please add products first before creating a sale');
+                      return;
+                    }
+                    const randomItem = items[Math.floor(Math.random() * items.length)];
+                    const discounts = ['20', '25', '30', '35'];
+                    const durations = ['7', '14', '30'];
+                    setSalesForm({
+                      name: 'Demo Sale',
+                      discount: discounts[Math.floor(Math.random() * discounts.length)],
+                      productSelection: 'specific',
+                      duration: durations[Math.floor(Math.random() * durations.length)]
+                    });
+                    // Note: In a real implementation, you'd select the item here
+                    // For now, it will use the first item when creating the sale
+                  }}
+                >
+                  🎯 Fill Demo Data
+                </Button>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="sale-name">Sale Name</Label>
                 <Input
@@ -679,6 +822,32 @@ export function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const demoProducts = [
+                    { title: 'Wireless Bluetooth Headphones', price: '79.99', quantity: '50', category: 'electronics', description: 'Premium noise-cancelling headphones with 30-hour battery life', imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500' },
+                    { title: 'Cotton T-Shirt', price: '24.99', quantity: '100', category: 'clothing', description: 'Comfortable 100% cotton t-shirt available in multiple colors', imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500' },
+                    { title: 'Smart Watch', price: '199.99', quantity: '30', category: 'electronics', description: 'Fitness tracker with heart rate monitor and GPS', imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500' },
+                    { title: 'Coffee Maker', price: '89.99', quantity: '25', category: 'home-kitchen', description: 'Programmable coffee maker with thermal carafe', imageUrl: 'https://images.unsplash.com/photo-1517668808823-f8f30bcc58d4?w=500' },
+                  ];
+                  const randomProduct = demoProducts[Math.floor(Math.random() * demoProducts.length)];
+                  setProductForm({
+                    title: randomProduct.title,
+                    price: randomProduct.price,
+                    quantityAvailable: randomProduct.quantity,
+                    category: randomProduct.category,
+                    description: randomProduct.description,
+                    imageUrl: randomProduct.imageUrl
+                  });
+                }}
+              >
+                🎯 Fill Demo Data
+              </Button>
+            </div>
             <form onSubmit={handleProductSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">

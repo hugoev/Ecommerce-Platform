@@ -167,10 +167,10 @@ Located in `src/main/resources/db/migration/`
 
 `DataInitializer.java` seeds:
 
-- Admin user (admin/admin123)
-- Regular user (user/password)
-- 10 sample products
-- 3 discount codes
+- Admin user: `admin` / `admin123`
+- Regular users: `john_doe`, `jane_smith`, `bob_wilson` (all with password `password123`)
+- 10 sample products across 5 categories (Electronics, Clothing, Books, Home & Garden, Sports)
+- 4 discount codes: `WELCOME10` (10%), `SUMMER20` (20%), `STUDENT15` (15%), `EXPIRED5` (5%, expired for testing)
 
 ## 🔧 Configuration
 

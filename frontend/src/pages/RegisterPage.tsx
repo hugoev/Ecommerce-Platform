@@ -36,6 +36,25 @@ export function RegisterPage() {
           <CardDescription>Create your account to start shopping.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="mb-4 flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const demoUsers = [
+                  { username: 'demo_user', password: 'demo123' },
+                  { username: 'test_user', password: 'test123' },
+                  { username: 'john_doe', password: 'password123' },
+                ];
+                const randomUser = demoUsers[Math.floor(Math.random() * demoUsers.length)];
+                setUsername(randomUser.username);
+                setPassword(randomUser.password);
+              }}
+            >
+              🎯 Fill Demo Data
+            </Button>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="username">Username</Label>
             <Input id="username" type="text" placeholder="Choose a username" value={username} onChange={(e) => setUsername(e.target.value)} required />

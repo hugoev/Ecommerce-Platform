@@ -22,9 +22,13 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf().disable()
                 .authorizeHttpRequests(authz -> authz
-
+                        // Public endpoints
                         .requestMatchers("/api/auth/**", "/api/items/**", "/images/**").permitAll()
+                        // Sales - GET is public, write operations require admin (handled by @PreAuthorize)
+                        .requestMatchers("/api/sales").permitAll()
+                        // Admin endpoints require admin role
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+                        // User endpoints require authentication
                         .requestMatchers("/api/orders/**", "/api/cart/**").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
                         .anyRequest().authenticated())
                 .exceptionHandling().authenticationEntryPoint(unauthorizedHandler).and()

@@ -111,7 +111,7 @@ export const ordersApi = {
 
   // Update order status (admin only)
   updateOrderStatus(orderId: number, status: string): Promise<OrderResponse> {
-    return apiService.put<{ success: boolean; data: OrderResponse }, { status: string }>(`/api/orders/${orderId}/status`, { status })
+    return apiService.put<{ success: boolean; data: OrderResponse }, { statusString: string }>(`/api/orders/${orderId}/status`, { statusString: status })
       .then(response => response.data);
   },
 

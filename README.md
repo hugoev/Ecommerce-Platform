@@ -110,7 +110,7 @@ Once all containers are running, you can access:
 
 **The application comes with pre-loaded sample data:**
 
-- **10 sample products** across different categories (Electronics, Books, Home & Garden, Sports)
+- **10 sample products** across different categories (Electronics, Clothing, Books, Home & Garden, Sports)
 - **4 users** ready to use
 - **4 discount codes** for testing
 
@@ -256,9 +256,11 @@ Ecommerce-Platform/
 
 ## 🔧 Development Setup
 
-### Option 1: Docker (Recommended)
+### Option 1: Docker Compose (Production-like Testing)
 
-Everything runs in containers - no local dependencies needed.
+**Best for:** Testing the full stack, deployment verification, or when you don't have Java/Node.js installed.
+
+**Note:** This setup builds production images - code changes require rebuilding containers (2-5 minutes). Not ideal for rapid development.
 
 ```bash
 # Start all services
@@ -271,22 +273,38 @@ docker compose up --build -d
 docker compose down
 ```
 
-### Option 2: Local Development
+**What happens:**
 
-For development with hot reload:
+- Backend: Compiles Java → builds JAR → runs in container (no hot reload)
+- Frontend: Builds static files → serves with Nginx (no hot reload)
+- Database: PostgreSQL with persistent data
+
+### Option 2: Local Development (Recommended for Fast Iteration)
+
+**Best for:** Active development with instant feedback and hot reload.
+
+**Benefits:**
+
+- ⚡ **Instant frontend updates** - Vite HMR reloads changes in milliseconds
+- 🔄 **Fast backend restarts** - Spring DevTools auto-restarts on code changes
+- 🚀 **No rebuilds needed** - Edit code and see changes immediately
 
 ```bash
-# 1. Start only the database
+# 1. Start only the database in Docker
 docker compose up -d db
 
 # 2. Start Backend (Terminal 1)
 cd backend
 ./mvnw spring-boot:run
+# Backend runs on http://localhost:8080
+# Changes auto-reload with Spring DevTools
 
 # 3. Start Frontend (Terminal 2)
 cd frontend
-npm install
+npm install  # Only needed first time
 npm run dev
+# Frontend runs on http://localhost:5173
+# Changes hot-reload instantly with Vite
 ```
 
 **Prerequisites for Local Development:**
@@ -294,6 +312,14 @@ npm run dev
 - Java 17+
 - Node.js 18+
 - Maven (or use ./mvnw wrapper)
+- Docker (only for the database)
+
+**Workflow:**
+
+1. Make code changes in your editor
+2. Frontend: Changes appear instantly in browser (Vite HMR)
+3. Backend: Spring DevTools restarts automatically (usually < 5 seconds)
+4. No need to rebuild Docker containers!
 
 ## 🔐 API Endpoints
 
@@ -353,9 +379,9 @@ npm run dev
 **Seeded Data** (from `DataInitializer.java`):
 
 - Admin user: `admin` / `admin123`
-- Regular user: `user` / `password`
-- 10 sample products
-- 3 discount codes
+- Regular users: `john_doe`, `jane_smith`, `bob_wilson` (all with password `password123`)
+- 10 sample products across 5 categories
+- 4 discount codes (WELCOME10, SUMMER20, STUDENT15, EXPIRED5)
 
 ## 🧪 Testing
 

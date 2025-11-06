@@ -9,12 +9,69 @@ interface AuthState {
   error: string | null;
 }
 
-const initialState: AuthState = {
-  user: null,
-  isAuthenticated: false,
-  status: 'idle',
-  error: null,
-};
+// Helper function to decode JWT token
+function decodeJWT(token: string): any {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    return null;
+  }
+}
+
+// Helper function to check if token is expired
+function isTokenValid(token: string): boolean {
+  try {
+    const decoded = decodeJWT(token);
+    if (!decoded || !decoded.exp) return false;
+    const currentTime = Date.now() / 1000;
+    return decoded.exp > currentTime;
+  } catch (error) {
+    return false;
+  }
+}
+
+// Helper function to restore auth state from localStorage
+function getInitialAuthState(): AuthState {
+  const token = localStorage.getItem('token');
+  const storedUser = localStorage.getItem('user');
+
+  if (token && isTokenValid(token) && storedUser) {
+    try {
+      const user = JSON.parse(storedUser);
+      return {
+        user,
+        isAuthenticated: true,
+        status: 'succeeded' as const,
+        error: null,
+      };
+    } catch (error) {
+      // If parsing fails, clear invalid data
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    }
+  } else if (token && !isTokenValid(token)) {
+    // Token expired, clear it
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  }
+
+  return {
+    user: null,
+    isAuthenticated: false,
+    status: 'idle' as const,
+    error: null,
+  };
+}
+
+const initialState: AuthState = getInitialAuthState();
 
 import { authApi } from '@/api/auth';
 
@@ -54,6 +111,7 @@ const authSlice = createSlice({
       state.status = 'idle';
       state.error = null;
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
     },
     clearAuth: (state) => {
       state.user = null;
@@ -61,6 +119,7 @@ const authSlice = createSlice({
       state.status = 'idle';
       state.error = null;
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
     },
   },
   extraReducers: (builder) => {
@@ -73,6 +132,8 @@ const authSlice = createSlice({
         state.status = 'succeeded';
         state.isAuthenticated = true;
         state.user = action.payload;
+        // Store user in localStorage for persistence
+        localStorage.setItem('user', JSON.stringify(action.payload));
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.status = 'failed';
@@ -86,6 +147,8 @@ const authSlice = createSlice({
         state.status = 'succeeded';
         state.isAuthenticated = true;
         state.user = action.payload.user;
+        // Store user in localStorage for persistence
+        localStorage.setItem('user', JSON.stringify(action.payload.user));
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.status = 'failed';

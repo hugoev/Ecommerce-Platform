@@ -16,6 +16,21 @@ export function CheckoutPage() {
   const [discountCode, setDiscountCode] = useState("");
   const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  
+  // Form state for shipping and payment
+  const [shippingInfo, setShippingInfo] = useState({
+    firstName: '',
+    lastName: '',
+    address: '',
+    city: '',
+    zipCode: ''
+  });
+  const [paymentInfo, setPaymentInfo] = useState({
+    cardNumber: '',
+    expiry: '',
+    cvv: '',
+    cardName: ''
+  });
 
   // For demo purposes, using userId = 1 (you would get this from auth context)
   const userId = 1;
@@ -136,28 +151,71 @@ export function CheckoutPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="mb-4 flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShippingInfo({
+                      firstName: 'John',
+                      lastName: 'Doe',
+                      address: '123 Main Street',
+                      city: 'Anytown',
+                      zipCode: '12345'
+                    });
+                  }}
+                >
+                  🎯 Fill Demo Data
+                </Button>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name</Label>
-                  <Input id="firstName" placeholder="John" />
+                  <Input 
+                    id="firstName" 
+                    placeholder="John" 
+                    value={shippingInfo.firstName}
+                    onChange={(e) => setShippingInfo({...shippingInfo, firstName: e.target.value})}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Last Name</Label>
-                  <Input id="lastName" placeholder="Doe" />
+                  <Input 
+                    id="lastName" 
+                    placeholder="Doe" 
+                    value={shippingInfo.lastName}
+                    onChange={(e) => setShippingInfo({...shippingInfo, lastName: e.target.value})}
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="address">Address</Label>
-                <Input id="address" placeholder="123 Main Street" />
+                <Input 
+                  id="address" 
+                  placeholder="123 Main Street" 
+                  value={shippingInfo.address}
+                  onChange={(e) => setShippingInfo({...shippingInfo, address: e.target.value})}
+                />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="city">City</Label>
-                  <Input id="city" placeholder="Anytown" />
+                  <Input 
+                    id="city" 
+                    placeholder="Anytown" 
+                    value={shippingInfo.city}
+                    onChange={(e) => setShippingInfo({...shippingInfo, city: e.target.value})}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="zipCode">ZIP Code</Label>
-                  <Input id="zipCode" placeholder="12345" />
+                  <Input 
+                    id="zipCode" 
+                    placeholder="12345" 
+                    value={shippingInfo.zipCode}
+                    onChange={(e) => setShippingInfo({...shippingInfo, zipCode: e.target.value})}
+                  />
                 </div>
               </div>
             </CardContent>
@@ -172,23 +230,60 @@ export function CheckoutPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="mb-4 flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setPaymentInfo({
+                      cardNumber: '4111 1111 1111 1111',
+                      expiry: '12/25',
+                      cvv: '123',
+                      cardName: 'John Doe'
+                    });
+                  }}
+                >
+                  🎯 Fill Demo Data
+                </Button>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="cardNumber">Card Number</Label>
-                <Input id="cardNumber" placeholder="1234 5678 9012 3456" />
+                <Input 
+                  id="cardNumber" 
+                  placeholder="1234 5678 9012 3456" 
+                  value={paymentInfo.cardNumber}
+                  onChange={(e) => setPaymentInfo({...paymentInfo, cardNumber: e.target.value})}
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="expiry">Expiry Date</Label>
-                  <Input id="expiry" placeholder="MM/YY" />
+                  <Input 
+                    id="expiry" 
+                    placeholder="MM/YY" 
+                    value={paymentInfo.expiry}
+                    onChange={(e) => setPaymentInfo({...paymentInfo, expiry: e.target.value})}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="cvv">CVV</Label>
-                  <Input id="cvv" placeholder="123" />
+                  <Input 
+                    id="cvv" 
+                    placeholder="123" 
+                    value={paymentInfo.cvv}
+                    onChange={(e) => setPaymentInfo({...paymentInfo, cvv: e.target.value})}
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="cardName">Name on Card</Label>
-                <Input id="cardName" placeholder="John Doe" />
+                <Input 
+                  id="cardName" 
+                  placeholder="John Doe" 
+                  value={paymentInfo.cardName}
+                  onChange={(e) => setPaymentInfo({...paymentInfo, cardName: e.target.value})}
+                />
               </div>
             </CardContent>
           </Card>

@@ -69,9 +69,18 @@ export function useAdminUsers(): UseAdminUsersState & UseAdminUsersActions {
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
-      // For now, we'll use a placeholder since the backend might not support user updates
-      // In a real implementation, this would call an API endpoint
-      console.log('Updating user:', id, updates);
+      // Parse fullName into firstName and lastName if provided
+      const updateData: { firstName?: string; lastName?: string; address?: string; phone?: string } = {};
+      
+      if (updates.fullName) {
+        const nameParts = updates.fullName.split(' ');
+        updateData.firstName = nameParts[0] || '';
+        updateData.lastName = nameParts.slice(1).join(' ') || '';
+      }
+      if (updates.address !== undefined) updateData.address = updates.address;
+      if (updates.phone !== undefined) updateData.phone = updates.phone;
+
+      await adminApi.updateUser(id, updateData);
       // Refresh users list after update
       await fetchUsers();
     } catch (error) {
@@ -87,9 +96,7 @@ export function useAdminUsers(): UseAdminUsersState & UseAdminUsersActions {
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
-      // For now, we'll use a placeholder since the backend might not support user deletion
-      // In a real implementation, this would call an API endpoint
-      console.log('Deleting user:', id);
+      await adminApi.deleteUser(id);
       // Refresh users list after deletion
       await fetchUsers();
     } catch (error) {

@@ -178,8 +178,8 @@ export const adminApi = {
   // User Management
   getAllUsers(page?: number, size?: number): Promise<{ content: AdminUserResponse[]; totalElements: number; totalPages: number }> {
     const params: Record<string, string> = {};
-    if (page !== undefined) params.pageNumber = page.toString();
-    if (size !== undefined) params.pageSize = size.toString();
+    if (page !== undefined) params.page = page.toString();
+    if (size !== undefined) params.size = size.toString();
 
     return apiService.get<{ success: boolean; data: AdminUserResponse[]; pagination: any }>('/api/admin/users', params)
       .then(response => ({
@@ -230,8 +230,29 @@ export const adminApi = {
   },
 
   updateOrderStatus(orderId: number, status: string): Promise<any> {
-    return apiService.put<{ success: boolean; data: any }, { status: string }>(`/api/orders/${orderId}/status`, { status })
+    return apiService.put<{ success: boolean; data: any }, { statusString: string }>(`/api/orders/${orderId}/status`, { statusString: status })
       .then(response => response.data);
+  },
+
+  // User Management (Admin)
+  updateUser(id: number, updates: { firstName?: string; lastName?: string; address?: string; phone?: string }): Promise<AdminUserResponse> {
+    return apiService.put<AdminUserResponse, typeof updates>(`/api/admin/users/${id}`, updates);
+  },
+
+  activateUser(id: number): Promise<AdminUserResponse> {
+    return apiService.post<AdminUserResponse, {}>(`/api/admin/users/${id}/activate`, {});
+  },
+
+  deactivateUser(id: number): Promise<AdminUserResponse> {
+    return apiService.post<AdminUserResponse, {}>(`/api/admin/users/${id}/deactivate`, {});
+  },
+
+  deleteUser(id: number): Promise<void> {
+    return apiService.delete(`/api/admin/users/${id}`);
+  },
+
+  changeUserRole(id: number, role: 'ROLE_USER' | 'ROLE_ADMIN'): Promise<AdminUserResponse> {
+    return apiService.post<AdminUserResponse, {}>(`/api/admin/users/${id}/role?role=${role}`, {});
   },
 };
 

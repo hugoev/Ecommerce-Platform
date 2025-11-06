@@ -2,6 +2,7 @@ package com.group7.ecommerce.springbackend.order;
 
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.group7.ecommerce.springbackend.cart.CartDto;
 import com.group7.ecommerce.springbackend.cart.CartService;
+import com.group7.ecommerce.springbackend.common.ApiResponse;
 import com.group7.ecommerce.springbackend.user.User;
 import com.group7.ecommerce.springbackend.user.UserRepository;
 
@@ -89,18 +91,30 @@ public class OrderController {
     }
 
     @PutMapping("/{orderId}/status")
-    public ResponseEntity<Order> updateOrderStatus(@PathVariable Long orderId,
+    public ResponseEntity<ApiResponse<OrderDto>> updateOrderStatus(@PathVariable Long orderId,
             @RequestBody UpdateOrderStatusRequest request) {
         try {
             Order order = orderRepository.findById(orderId)
                     .orElseThrow(() -> new NoSuchElementException("Order not found"));
 
-            order.setStatus(request.getStatus());
+            // Handle both enum and string status
+            Order.OrderStatus status;
+            if (request.getStatus() != null) {
+                status = request.getStatus();
+            } else if (request.getStatusString() != null) {
+                status = Order.OrderStatus.valueOf(request.getStatusString().toUpperCase());
+            } else {
+                return ResponseEntity.badRequest().build();
+            }
+
+            order.setStatus(status);
             Order updatedOrder = orderRepository.save(order);
 
-            return ResponseEntity.ok(updatedOrder);
+            return ResponseEntity.ok(ApiResponse.success(toDto(updatedOrder), "Order status updated successfully"));
         } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -108,29 +122,67 @@ public class OrderController {
 
     // Admin endpoints
     @GetMapping("/admin/all")
-    public ResponseEntity<List<Order>> getAllOrders() {
+    public ResponseEntity<ApiResponse<List<OrderDto>>> getAllOrders() {
         try {
             List<Order> orders = orderRepository.findAllByOrderByOrderDateDesc();
-            return ResponseEntity.ok(orders);
+            List<OrderDto> orderDtos = orders.stream()
+                    .map(this::toDto)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(ApiResponse.success(orderDtos));
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
     @GetMapping("/admin/status/{status}")
-    public ResponseEntity<List<Order>> getOrdersByStatus(@PathVariable String status) {
+    public ResponseEntity<ApiResponse<List<OrderDto>>> getOrdersByStatus(@PathVariable String status) {
         try {
             Order.OrderStatus orderStatus = Order.OrderStatus.valueOf(status.toUpperCase());
             List<Order> orders = orderRepository.findByStatusOrderByOrderDateDesc(orderStatus);
-            return ResponseEntity.ok(orders);
+            List<OrderDto> orderDtos = orders.stream()
+                    .map(this::toDto)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(ApiResponse.success(orderDtos));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
+    // Helper method to convert Order to OrderDto
+    private OrderDto toDto(Order order) {
+        OrderDto dto = new OrderDto();
+        dto.setId(order.getId());
+        dto.setUserId(order.getUser().getId());
+        dto.setUserUsername(order.getUser().getUsername());
+        dto.setStatus(order.getStatus().name());
+        dto.setSubtotal(order.getSubtotal());
+        dto.setTax(order.getTax());
+        dto.setDiscountAmount(order.getDiscountAmount());
+        dto.setTotal(order.getTotal());
+        dto.setAppliedDiscountCode(order.getAppliedDiscountCode());
+        dto.setOrderDate(order.getOrderDate());
+
+        List<OrderItemDto> orderItemDtos = order.getOrderItems().stream()
+                .map(item -> {
+                    OrderItemDto itemDto = new OrderItemDto();
+                    itemDto.setItemId(item.getItem().getId());
+                    itemDto.setItemName(item.getItem().getTitle());
+                    itemDto.setQuantity(item.getQuantity());
+                    itemDto.setPriceAtPurchase(item.getPriceAtPurchase());
+                    return itemDto;
+                })
+                .collect(Collectors.toList());
+        dto.setOrderItems(orderItemDtos);
+
+        return dto;
+    }
+
     // DTOs for request/response
     public static class UpdateOrderStatusRequest {
         private Order.OrderStatus status;
+        private String statusString;
 
         public UpdateOrderStatusRequest() {
         }
@@ -141,6 +193,14 @@ public class OrderController {
 
         public void setStatus(Order.OrderStatus status) {
             this.status = status;
+        }
+
+        public String getStatusString() {
+            return statusString;
+        }
+
+        public void setStatusString(String statusString) {
+            this.statusString = statusString;
         }
     }
 }

@@ -70,9 +70,7 @@ frontend/
 │   │   ├── ProfilePage.tsx
 │   │   ├── LoginPage.tsx
 │   │   ├── RegisterPage.tsx
-│   │   ├── AdminDashboard.tsx
-│   │   ├── AboutPage.tsx
-│   │   └── ContactPage.tsx
+│   │   └── AdminDashboard.tsx
 │   │
 │   ├── types/           # TypeScript definitions
 │   │   └── index.ts
@@ -292,8 +290,6 @@ React Router v7 with route protection:
 - `/admin` - Admin dashboard (admin only)
 - `/login` - Login page
 - `/register` - Registration page
-- `/about` - About page
-- `/contact` - Contact page
 
 ## 📦 Building for Production
 

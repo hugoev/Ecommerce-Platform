@@ -1,6 +1,5 @@
 package com.group7.ecommerce.springbackend.order;
 
-import com.group7.ecommerce.springbackend.item.ItemDto;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -20,12 +19,4 @@ public class OrderDto {
     private BigDecimal total;
     private String appliedDiscountCode;
     private OffsetDateTime orderDate;
-}
-
-@Data
-class OrderItemDto {
-    private Long itemId;
-    private String itemName;
-    private int quantity;
-    private BigDecimal priceAtPurchase;
 }
