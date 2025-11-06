@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/components/ui/toast";
 import { useCart } from "@/hooks/useCart";
 import { useOrders } from "@/hooks/useOrders";
 import { CreditCard, MapPin, CheckCircle, Loader2 } from "lucide-react";
@@ -15,6 +16,7 @@ export function CheckoutPage() {
   const navigate = useNavigate();
   const { cart, loading: cartLoading, error: cartError, fetchCart, applyDiscount: applyDiscountToCart } = useCart();
   const { placeOrder } = useOrders();
+  const { showToast } = useToast();
   const [discountCode, setDiscountCode] = useState("");
   const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
@@ -53,7 +55,7 @@ export function CheckoutPage() {
     if (!discountCode.trim()) return;
     
     if (!userId) {
-      alert("Please log in to apply discount codes.");
+      showToast("Please log in to apply discount codes.", 'error');
       return;
     }
     
@@ -69,12 +71,12 @@ export function CheckoutPage() {
 
   const handlePlaceOrder = async () => {
     if (!cart || cart.items.length === 0) {
-      alert("Your cart is empty!");
+      showToast("Your cart is empty!", 'error');
       return;
     }
 
     if (!userId) {
-      alert("Please log in to place an order.");
+      showToast("Please log in to place an order.", 'error');
       navigate('/login');
       return;
     }
@@ -82,11 +84,11 @@ export function CheckoutPage() {
     setIsPlacingOrder(true);
     try {
       await placeOrder(userId);
-      alert("Order placed successfully!");
+      showToast("Order placed successfully!", 'success');
       navigate("/orders");
     } catch (error) {
       console.error('Failed to place order:', error);
-      alert("Failed to place order. Please try again.");
+      showToast("Failed to place order. Please try again.", 'error');
     } finally {
       setIsPlacingOrder(false);
     }

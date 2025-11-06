@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/toast';
 import { useState } from 'react';
 
 interface LoginModalProps {
@@ -13,6 +14,7 @@ interface LoginModalProps {
 }
 
 export function LoginModal({ isOpen, onClose, onLoginSuccess, message }: LoginModalProps) {
+  const { showToast } = useToast();
   const [credentials, setCredentials] = useState({
     username: '',
     password: '',
@@ -104,7 +106,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess, message }: LoginMo
             className="text-blue-600 hover:underline"
             onClick={() => {
               // Could implement registration modal here
-              alert('Please register through the registration page');
+              showToast('Please register through the registration page', 'info');
             }}
           >
             Register here

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/toast";
 import { useUser } from "@/hooks/useUser";
 import { useOrders } from "@/hooks/useOrders";
 import { User, Loader2 } from "lucide-react";
@@ -13,6 +14,7 @@ export function ProfilePage() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const { profile, loading, error, fetchProfile, updateProfile, changePassword } = useUser();
   const { orders } = useOrders();
+  const { showToast } = useToast();
   
   // For demo purposes, using userId = 1 (you would get this from auth context)
   const userId = 1;
@@ -65,7 +67,7 @@ export function ProfilePage() {
 
   const handleChangePassword = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert('New passwords do not match');
+      showToast('New passwords do not match', 'error');
       return;
     }
 
@@ -75,7 +77,7 @@ export function ProfilePage() {
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword,
       });
-      alert('Password changed successfully');
+      showToast('Password changed successfully', 'success');
       setPasswordData({
         currentPassword: '',
         newPassword: '',
@@ -83,7 +85,7 @@ export function ProfilePage() {
       });
     } catch (error) {
       console.error('Failed to change password:', error);
-      alert('Failed to change password. Please check your current password.');
+      showToast('Failed to change password. Please check your current password.', 'error');
     } finally {
       setIsChangingPassword(false);
     }

@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
 import { useOrders } from "@/hooks/useOrders";
 import { Calendar, DollarSign, Package, User } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -12,6 +13,7 @@ export function OrderHistoryPage() {
   const navigate = useNavigate();
   const [sortBy, setSortBy] = useState("date-desc");
   const { orders, loading, error, fetchOrders } = useOrders();
+  const { showToast } = useToast();
   
   // Get current user from auth state
   const user = useSelector((state: RootState) => state.auth.user);
@@ -172,7 +174,7 @@ export function OrderHistoryPage() {
                     onClick={() => {
                       // Order details are already shown in the card
                       // Could expand to show more details or open a modal
-                      alert(`Order #${order.id}\nStatus: ${order.status}\nTotal: $${order.total.toFixed(2)}\nItems: ${order.items.length}`);
+                      showToast(`Order #${order.id} - Status: ${order.status}, Total: $${order.total.toFixed(2)}, Items: ${order.items.length}`, 'info');
                     }}
                   >
                     View Details
@@ -181,7 +183,7 @@ export function OrderHistoryPage() {
                     variant="outline" 
                     size="sm"
                     onClick={() => {
-                      alert(`Tracking information for Order #${order.id} will be available once the order ships.`);
+                      showToast(`Tracking information for Order #${order.id} will be available once the order ships.`, 'info');
                     }}
                   >
                     Track Package
@@ -191,7 +193,7 @@ export function OrderHistoryPage() {
                       variant="outline" 
                       size="sm"
                       onClick={() => {
-                        alert('Review functionality coming soon!');
+                        showToast('Review functionality coming soon!', 'info');
                       }}
                     >
                       Leave Review
@@ -202,7 +204,7 @@ export function OrderHistoryPage() {
                     size="sm"
                     onClick={() => {
                       // Add all items from this order back to cart
-                      alert(`Adding ${order.items.length} item(s) from Order #${order.id} to cart...`);
+                      showToast(`Adding ${order.items.length} item(s) from Order #${order.id} to cart...`, 'info');
                       // TODO: Implement reorder functionality
                     }}
                   >
