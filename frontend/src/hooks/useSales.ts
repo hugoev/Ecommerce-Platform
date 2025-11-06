@@ -3,6 +3,7 @@ import type { Item } from '@/types';
 import { useEffect, useState } from 'react';
 
 interface SalesItem extends Item {
+  itemId: number;
   originalPrice: number;
   salePrice: number;
   discountPercentage: number;

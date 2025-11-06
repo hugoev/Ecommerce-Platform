@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.group7.ecommerce.springbackend.item.Item;
 import com.group7.ecommerce.springbackend.item.ItemRepository;
 
@@ -57,8 +58,7 @@ public class SalesItemService {
                 item,
                 request.getSalePrice(),
                 request.getSaleStartDate(),
-                request.getSaleEndDate()
-        );
+                request.getSaleEndDate());
         salesItem.setActive(true);
 
         SalesItem saved = salesItemRepository.save(salesItem);
@@ -211,6 +211,8 @@ public class SalesItemService {
         private String sku;
         private OffsetDateTime saleStartDate;
         private OffsetDateTime saleEndDate;
+
+        @JsonProperty("isActive")
         private boolean isActive;
 
         // Getters and setters
@@ -327,4 +329,3 @@ public class SalesItemService {
         }
     }
 }
-

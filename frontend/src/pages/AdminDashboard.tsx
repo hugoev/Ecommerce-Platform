@@ -1,4 +1,6 @@
+import { adminApi, type AdminUserResponse } from "@/api/admin";
 import { itemHelpers, itemsApi } from "@/api/items";
+import type { RootState } from "@/app/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -11,18 +13,52 @@ import { useAdminOrders } from "@/hooks/useAdminOrders";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
 import { useItems } from "@/hooks/useItems";
 import { useSales } from "@/hooks/useSales";
-import { adminApi, type AdminUserResponse } from "@/api/admin";
 import type { Order } from "@/types";
-import { DollarSign, Edit, Loader2, Package, Plus, ShoppingCart, Trash2, Upload, Users, Eye } from "lucide-react";
-import { useState, useEffect } from "react";
+import { DollarSign, Edit, Eye, Loader2, Package, Plus, ShoppingCart, Trash2, Upload, Users } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import type { RootState } from "@/app/store";
 
 export function AdminDashboard() {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const token = localStorage.getItem('token');
+
+  // Helper function to format sale dates
+  const formatSaleDate = (dateString: string | undefined): string => {
+    if (!dateString || dateString === '') {
+      return 'No date set';
+    }
+    
+    try {
+      // Log the raw date string for debugging
+      console.log('Formatting date:', dateString, 'Type:', typeof dateString);
+      
+      // Handle ISO string format from backend
+      const date = new Date(dateString);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.error('Invalid date:', dateString);
+        return 'Invalid date';
+      }
+      
+      // Check if date is suspiciously old (before 2000)
+      if (date.getFullYear() < 2000) {
+        console.error('Date seems incorrect:', dateString, 'parsed as:', date);
+        return 'Invalid date';
+      }
+      
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    } catch (error) {
+      console.error('Error parsing date:', dateString, error);
+      return 'Invalid date';
+    }
+  };
 
   // Check authentication and admin role
   useEffect(() => {
@@ -54,7 +90,7 @@ export function AdminDashboard() {
   const { orders: adminOrders, updateOrderStatus, fetchAllOrders } = useAdminOrders();
   const { users, fetchUsers, updateUser, deleteUser } = useAdminUsers();
   const { discountCodes, createDiscountCode, updateDiscountCode, toggleDiscountCode, deleteDiscountCode, fetchDiscountCodes } = useAdminDiscounts();
-  const { salesItems, loading: salesLoading, createSalesItem, updateSalesItem, deleteSalesItem, toggleActive: toggleSalesActive } = useSales();
+  const { salesItems, loading: salesLoading, createSalesItem, updateSalesItem, deleteSalesItem, toggleActive: toggleSalesActive, fetchSalesItems } = useSales();
 
   // Calculate stats from real data
   const stats = {
@@ -68,6 +104,7 @@ export function AdminDashboard() {
   const [editingOrderStatus, setEditingOrderStatus] = useState<{ orderId: number; status: string } | null>(null);
   const [editingUser, setEditingUser] = useState<AdminUserResponse | null>(null);
   const [editingDiscountCode, setEditingDiscountCode] = useState<{ id: number; code: string; discountPercentage: number; expiryDate?: string; active: boolean } | null>(null);
+  const [editingSalesItem, setEditingSalesItem] = useState<{ id: number; itemId: number; salePrice: number; saleStartDate: string; saleEndDate: string } | null>(null);
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
 
   // Form state for adding/editing products
@@ -260,12 +297,54 @@ export function AdminDashboard() {
       const salePrice = selectedItem.price * (1 - discountPercentage / 100);
       const durationDays = parseInt(salesForm.duration) || 7;
 
-      await createSalesItem({
-        itemId: selectedItem.id,
-        salePrice: salePrice,
-        saleStartDate: new Date().toISOString(),
-        saleEndDate: new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString()
-      });
+      if (editingSalesItem) {
+        // Update existing sale
+        await updateSalesItem(editingSalesItem.id, {
+          salePrice: salePrice,
+          saleStartDate: new Date().toISOString(),
+          saleEndDate: new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString()
+        });
+        alert('Sale updated successfully!');
+        await fetchSalesItems(); // Refresh to get updated dates from server
+      } else {
+        // Check if item already has an active sale
+        const existingSale = salesItems.find(sale => sale.itemId === selectedItem.id && sale.isActive);
+        if (existingSale) {
+          const shouldEdit = confirm(
+            `This item already has an active sale (${existingSale.title}). Would you like to edit it instead?`
+          );
+          if (shouldEdit) {
+            setEditingSalesItem({
+              id: existingSale.id,
+              itemId: existingSale.itemId,
+              salePrice: existingSale.salePrice,
+              saleStartDate: existingSale.saleStartDate,
+              saleEndDate: existingSale.saleEndDate
+            });
+            setSalesForm({
+              name: existingSale.title,
+              discount: existingSale.discountPercentage.toString(),
+              productSelection: 'specific',
+              duration: Math.ceil((new Date(existingSale.saleEndDate).getTime() - new Date(existingSale.saleStartDate).getTime()) / (1000 * 60 * 60 * 24)).toString()
+            });
+            // Keep dialog open for editing
+            return;
+          } else {
+            alert('Please deactivate the existing sale first, or edit it instead.');
+            return;
+          }
+        }
+
+        // Create new sale
+        await createSalesItem({
+          itemId: selectedItem.id,
+          salePrice: salePrice,
+          saleStartDate: new Date().toISOString(),
+          saleEndDate: new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString()
+        });
+        alert('Sale created successfully!');
+        await fetchSalesItems(); // Refresh to get correct dates from server
+      }
 
       setSalesForm({
         name: '',
@@ -273,11 +352,41 @@ export function AdminDashboard() {
         productSelection: 'all',
         duration: ''
       });
+      setEditingSalesItem(null);
       setShowSalesDialog(false);
-      alert('Sale created successfully!');
     } catch (error) {
-      console.error('Failed to create sale:', error);
-      alert(`Failed to create sale: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Failed to create/update sale:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Check if error is about existing active sale
+      if (errorMessage.includes('already has an active sale')) {
+        const selectedItem = items[0];
+        const existingSale = salesItems.find(sale => sale.itemId === selectedItem.id && sale.isActive);
+        if (existingSale) {
+          const shouldEdit = confirm(
+            `This item already has an active sale. Would you like to edit it instead?`
+          );
+          if (shouldEdit) {
+            setEditingSalesItem({
+              id: existingSale.id,
+              itemId: existingSale.itemId,
+              salePrice: existingSale.salePrice,
+              saleStartDate: existingSale.saleStartDate,
+              saleEndDate: existingSale.saleEndDate
+            });
+            setSalesForm({
+              name: existingSale.title,
+              discount: existingSale.discountPercentage.toString(),
+              productSelection: 'specific',
+              duration: Math.ceil((new Date(existingSale.saleEndDate).getTime() - new Date(existingSale.saleStartDate).getTime()) / (1000 * 60 * 60 * 24)).toString()
+            });
+            return;
+          }
+        }
+        alert('This item already has an active sale. Please deactivate it first or edit the existing sale.');
+      } else {
+        alert(`Failed to ${editingSalesItem ? 'update' : 'create'} sale: ${errorMessage}`);
+      }
     }
   };
 
@@ -716,7 +825,13 @@ export function AdminDashboard() {
                     <div className="flex-1">
                       <div className="font-medium">{sale.title}</div>
                       <div className="text-sm text-muted-foreground">
-                        {new Date(sale.saleStartDate).toLocaleDateString()} - {new Date(sale.saleEndDate).toLocaleDateString()}
+                        {sale.saleStartDate && sale.saleEndDate && sale.saleStartDate !== '' && sale.saleEndDate !== '' ? (
+                          <>
+                            {formatSaleDate(sale.saleStartDate)} - {formatSaleDate(sale.saleEndDate)}
+                          </>
+                        ) : (
+                          <span className="text-yellow-600">Dates not set</span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
@@ -731,22 +846,60 @@ export function AdminDashboard() {
                         {sale.isActive ? 'Active' : 'Inactive'}
                       </span>
                       <div className="flex gap-1">
-                        <Button size="sm" variant="outline" onClick={async () => {
-                          try {
-                            await toggleSalesActive(sale.id);
-                          } catch (error) {
-                            console.error('Failed to toggle sale:', error);
-                          }
-                        }}>Toggle</Button>
-                        <Button size="sm" variant="outline" onClick={async () => {
-                          if (confirm('Are you sure you want to delete this sale?')) {
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => {
+                            setEditingSalesItem({
+                              id: sale.id,
+                              itemId: sale.itemId,
+                              salePrice: sale.salePrice,
+                              saleStartDate: sale.saleStartDate,
+                              saleEndDate: sale.saleEndDate
+                            });
+                            // Pre-populate form with sale data
+                            setSalesForm({
+                              name: sale.title,
+                              discount: sale.discountPercentage.toString(),
+                              productSelection: 'specific',
+                              duration: Math.ceil((new Date(sale.saleEndDate).getTime() - new Date(sale.saleStartDate).getTime()) / (1000 * 60 * 60 * 24)).toString()
+                            });
+                            setShowSalesDialog(true);
+                          }}
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          Edit
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={async () => {
                             try {
-                              await deleteSalesItem(sale.id);
+                              await toggleSalesActive(sale.id);
                             } catch (error) {
-                              console.error('Failed to delete sale:', error);
+                              console.error('Failed to toggle sale:', error);
+                              alert(`Failed to toggle sale: ${error instanceof Error ? error.message : 'Unknown error'}`);
                             }
-                          }
-                        }}>Delete</Button>
+                          }}
+                        >
+                          Toggle
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={async () => {
+                            if (confirm('Are you sure you want to delete this sale?')) {
+                              try {
+                                await deleteSalesItem(sale.id);
+                              } catch (error) {
+                                console.error('Failed to delete sale:', error);
+                                alert(`Failed to delete sale: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                              }
+                            }
+                          }}
+                        >
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -760,7 +913,7 @@ export function AdminDashboard() {
         <Dialog open={showSalesDialog} onOpenChange={setShowSalesDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create Sale/Promotion</DialogTitle>
+              <DialogTitle>{editingSalesItem ? 'Edit Sale/Promotion' : 'Create Sale/Promotion'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreateSale} className="space-y-4">
               <div className="mb-4 flex justify-end">
@@ -835,8 +988,22 @@ export function AdminDashboard() {
                 />
               </div>
               <div className="flex gap-2">
-                <Button type="submit" className="flex-1">Create Sale</Button>
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setShowSalesDialog(false)}>
+                <Button type="submit" className="flex-1">{editingSalesItem ? 'Update Sale' : 'Create Sale'}</Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="flex-1" 
+                  onClick={() => {
+                    setShowSalesDialog(false);
+                    setEditingSalesItem(null);
+                    setSalesForm({
+                      name: '',
+                      discount: '',
+                      productSelection: 'all',
+                      duration: ''
+                    });
+                  }}
+                >
                   Cancel
                 </Button>
               </div>
