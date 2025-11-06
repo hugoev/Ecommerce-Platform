@@ -11,5 +11,6 @@ public interface SalesItemRepository extends JpaRepository<SalesItem, Long> {
     List<SalesItem> findByIsActiveTrue();
     Optional<SalesItem> findByItemIdAndIsActiveTrue(Long itemId);
     List<SalesItem> findByItemId(Long itemId);
+    void deleteByItemId(Long itemId);
 }
 

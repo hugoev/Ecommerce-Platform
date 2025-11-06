@@ -5,13 +5,18 @@ import java.util.NoSuchElementException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.group7.ecommerce.springbackend.sales.SalesItemRepository;
 
 @Service
 public class ItemService {
     private final ItemRepository repo;
+    private final SalesItemRepository salesItemRepository;
 
-    public ItemService(ItemRepository repo) {
+    public ItemService(ItemRepository repo, SalesItemRepository salesItemRepository) {
         this.repo = repo;
+        this.salesItemRepository = salesItemRepository;
     }
 
     public Page<Item> getAll(String q, Pageable pageable) {
@@ -29,12 +34,14 @@ public class ItemService {
                 .orElseThrow(() -> new NoSuchElementException("Item " + id + " not found"));
     }
 
+    @Transactional
     public void delete(Long id) {
         if (!repo.existsById(id)) {
             throw new NoSuchElementException("Item " + id + " not found");
         }
+        // Delete all related sales items first to avoid foreign key constraint violation
+        salesItemRepository.deleteByItemId(id);
         repo.deleteById(id);
-
     }
 
     public Item replace(Long id, Item body) {
