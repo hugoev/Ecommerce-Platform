@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/toast";
 import { useAdminDiscounts } from "@/hooks/useAdminDiscounts";
 import { useAdminOrders } from "@/hooks/useAdminOrders";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
@@ -23,6 +24,7 @@ export function AdminDashboard() {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const token = localStorage.getItem('token');
+  const { showToast } = useToast();
 
   // Helper function to format sale dates
   const formatSaleDate = (dateString: string | undefined): string => {
@@ -63,17 +65,17 @@ export function AdminDashboard() {
   // Check authentication and admin role
   useEffect(() => {
     if (!isAuthenticated || !token) {
-      alert('Please log in to access the admin dashboard');
+      showToast('Please log in to access the admin dashboard', 'error');
       navigate('/login');
       return;
     }
     
     if (user?.role !== 'ROLE_ADMIN') {
-      alert('Admin access required');
+      showToast('Admin access required', 'error');
       navigate('/');
       return;
     }
-  }, [isAuthenticated, token, user, navigate]);
+  }, [isAuthenticated, token, user, navigate, showToast]);
 
   // Early return if not authenticated or not admin
   if (!isAuthenticated || !token || user?.role !== 'ROLE_ADMIN') {
@@ -101,6 +103,7 @@ export function AdminDashboard() {
   };
 
   const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [showProductForm, setShowProductForm] = useState(false);
   const [editingOrderStatus, setEditingOrderStatus] = useState<{ orderId: number; status: string } | null>(null);
   const [editingUser, setEditingUser] = useState<AdminUserResponse | null>(null);
   const [viewingUser, setViewingUser] = useState<AdminUserResponse | null>(null);
@@ -250,7 +253,7 @@ export function AdminDashboard() {
       setProductForm({ ...productForm, imageUrl });
     } catch (error) {
       console.error('Failed to upload image:', error);
-      alert('Failed to upload image. Please try again.');
+      showToast('Failed to upload image. Please try again.', 'error');
     } finally {
       setUploadingImage(false);
     }
@@ -285,6 +288,7 @@ export function AdminDashboard() {
         imageUrl: ''
       });
       setEditingProduct(null);
+      setShowProductForm(false);
     } catch (error) {
       console.error('Failed to save product:', error);
       // Error handling is done in the useItems hook
@@ -293,6 +297,7 @@ export function AdminDashboard() {
 
   const handleEditProduct = (product: any) => {
     setEditingProduct(product);
+    setShowProductForm(true);
     setProductForm({
       title: product.title,
       price: product.price.toString(),
@@ -313,7 +318,7 @@ export function AdminDashboard() {
       await fetchAllOrders();
     } catch (error) {
       console.error('Failed to update order status:', error);
-      alert(`Failed to update order status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showToast(`Failed to update order status: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
   };
 
@@ -343,7 +348,7 @@ export function AdminDashboard() {
           expiryDate,
           active: editingDiscountCode.active
         });
-        alert('Discount code updated successfully!');
+        // Success - no alert needed
       } else {
         // Create new discount code
         await createDiscountCode({
@@ -352,7 +357,7 @@ export function AdminDashboard() {
           expiryDate,
           active: true
         });
-        alert('Discount code created successfully!');
+        // Success - no alert needed
       }
 
       setDiscountForm({
@@ -366,7 +371,7 @@ export function AdminDashboard() {
       await fetchDiscountCodes();
     } catch (error) {
       console.error('Failed to create/update discount code:', error);
-      alert(`Failed to ${editingDiscountCode ? 'update' : 'create'} discount code: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showToast(`Failed to ${editingDiscountCode ? 'update' : 'create'} discount code: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
   };
 
@@ -375,7 +380,7 @@ export function AdminDashboard() {
 
     try {
       if (items.length === 0) {
-        alert('No items available to create a sale');
+        showToast('No items available to create a sale', 'error');
         return;
       }
 
@@ -392,7 +397,7 @@ export function AdminDashboard() {
           saleStartDate: new Date().toISOString(),
           saleEndDate: new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString()
         });
-        alert('Sale updated successfully!');
+        // Success - no alert needed
         await fetchSalesItems(); // Refresh to get updated dates from server
       } else {
         // Check if item already has an active sale
@@ -418,7 +423,7 @@ export function AdminDashboard() {
             // Keep dialog open for editing
             return;
           } else {
-            alert('Please deactivate the existing sale first, or edit it instead.');
+            showToast('Please deactivate the existing sale first, or edit it instead.', 'error');
             return;
           }
         }
@@ -430,7 +435,7 @@ export function AdminDashboard() {
           saleStartDate: new Date().toISOString(),
           saleEndDate: new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString()
         });
-        alert('Sale created successfully!');
+        // Success - no alert needed
         await fetchSalesItems(); // Refresh to get correct dates from server
       }
 
@@ -471,9 +476,9 @@ export function AdminDashboard() {
             return;
           }
         }
-        alert('This item already has an active sale. Please deactivate it first or edit the existing sale.');
+        showToast('This item already has an active sale. Please deactivate it first or edit the existing sale.', 'error');
       } else {
-        alert(`Failed to ${editingSalesItem ? 'update' : 'create'} sale: ${errorMessage}`);
+        showToast(`Failed to ${editingSalesItem ? 'update' : 'create'} sale: ${errorMessage}`, 'error');
       }
     }
   };
@@ -483,7 +488,7 @@ export function AdminDashboard() {
 
     const user = users.find(u => u.username === userSearch || u.fullName.toLowerCase().includes(userSearch.toLowerCase()));
     if (!user) {
-      alert('User not found');
+      showToast('User not found', 'error');
       return;
     }
 
@@ -491,22 +496,25 @@ export function AdminDashboard() {
       switch (selectedUserAction) {
         case 'deactivate':
           await adminApi.deactivateUser(user.id);
-          alert('User deactivated successfully');
+          // Success - no alert needed
           break;
         case 'delete':
-          if (confirm(`Are you sure you want to delete user ${user.fullName}?`)) {
+          try {
             await adminApi.deleteUser(user.id);
-            alert('User deleted successfully');
+            showToast('User deleted successfully', 'success');
+          } catch (error) {
+            console.error('Failed to delete user:', error);
+            showToast(`Failed to delete user: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
           }
           break;
         default:
-          alert(`Action "${selectedUserAction}" - Please use the Edit button for user modifications`);
+          showToast(`Action "${selectedUserAction}" - Please use the Edit button for user modifications`, 'error');
       }
       // Refresh users list
       await fetchUsers();
     } catch (error) {
       console.error('Failed to perform user action:', error);
-      alert(`Failed to ${selectedUserAction} user: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showToast(`Failed to ${selectedUserAction} user: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
   };
 
@@ -816,7 +824,7 @@ export function AdminDashboard() {
                               await fetchDiscountCodes();
                             } catch (error) {
                               console.error('Failed to toggle discount code:', error);
-                              alert(`Failed to toggle discount code: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                              showToast(`Failed to toggle discount code: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
                             }
                           }}
                         >
@@ -828,15 +836,13 @@ export function AdminDashboard() {
                           variant="outline"
                           className="h-8"
                           onClick={async () => {
-                            if (confirm(`Are you sure you want to delete discount code "${discount.code}"?`)) {
-                              try {
-                                await deleteDiscountCode(discount.id);
-                                await fetchDiscountCodes();
-                                alert('Discount code deleted successfully!');
-                              } catch (error) {
-                                console.error('Failed to delete discount code:', error);
-                                alert(`Failed to delete discount code: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                              }
+                            try {
+                              await deleteDiscountCode(discount.id);
+                              await fetchDiscountCodes();
+                              showToast('Discount code deleted successfully', 'success');
+                            } catch (error) {
+                              console.error('Failed to delete discount code:', error);
+                              showToast(`Failed to delete discount code: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
                             }
                           }}
                         >
@@ -1050,7 +1056,7 @@ export function AdminDashboard() {
                               await toggleSalesActive(sale.id);
                             } catch (error) {
                               console.error('Failed to toggle sale:', error);
-                              alert(`Failed to toggle sale: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                              showToast(`Failed to toggle sale: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
                             }
                           }}
                         >
@@ -1062,13 +1068,12 @@ export function AdminDashboard() {
                           variant="outline"
                           className="h-8"
                           onClick={async () => {
-                            if (confirm('Are you sure you want to delete this sale?')) {
-                              try {
-                                await deleteSalesItem(sale.id);
-                              } catch (error) {
-                                console.error('Failed to delete sale:', error);
-                                alert(`Failed to delete sale: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                              }
+                            try {
+                              await deleteSalesItem(sale.id);
+                              showToast('Sale deleted successfully', 'success');
+                            } catch (error) {
+                              console.error('Failed to delete sale:', error);
+                              showToast(`Failed to delete sale: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
                             }
                           }}
                         >
@@ -1098,7 +1103,7 @@ export function AdminDashboard() {
                   size="sm"
                   onClick={() => {
                     if (items.length === 0) {
-                      alert('Please add products first before creating a sale');
+                      showToast('Please add products first before creating a sale', 'error');
                       return;
                     }
                     const randomItem = items[Math.floor(Math.random() * items.length)];
@@ -1196,7 +1201,18 @@ export function AdminDashboard() {
               Product Management
             </div>
             <div className="flex gap-2">
-              <Button size="sm" onClick={() => setEditingProduct(null)}>
+              <Button size="sm" onClick={() => {
+                setEditingProduct(null);
+                setShowProductForm(true);
+                setProductForm({
+                  title: '',
+                  price: '',
+                  quantityAvailable: '',
+                  category: '',
+                  description: '',
+                  imageUrl: ''
+                });
+              }}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Product
               </Button>
@@ -1251,11 +1267,13 @@ export function AdminDashboard() {
                       variant="outline"
                       size="sm"
                       onClick={async () => {
-                        if (confirm('Are you sure you want to delete this product?')) {
-                          try {
-                            await deleteItem(product.id);
-                          } catch (error) {
-                            console.error('Failed to delete product:', error);
+                        try {
+                          await deleteItem(product.id);
+                          showToast('Product deleted successfully', 'success');
+                        } catch (error) {
+                          console.error('Failed to delete product:', error);
+                          if (error instanceof Error && error.message) {
+                            showToast(`Failed to delete product: ${error.message}`, 'error');
                           }
                         }
                       }}
@@ -1272,7 +1290,7 @@ export function AdminDashboard() {
       </Card>
 
       {/* Product Form */}
-      {(editingProduct || productForm.title) && (
+      {(showProductForm || editingProduct !== null) && (
         <Card className="mt-8">
           <CardHeader>
             <CardTitle>
@@ -1426,6 +1444,7 @@ export function AdminDashboard() {
                   className="flex-1"
                   onClick={() => {
                     setEditingProduct(null);
+                    setShowProductForm(false);
                     setProductForm({
                       title: '',
                       price: '',
@@ -1703,10 +1722,10 @@ export function AdminDashboard() {
                           });
                           await fetchUsers();
                           setEditingUser(null);
-                          alert('User updated successfully!');
+                          // Success - no alert needed
                         } catch (error) {
                           console.error('Failed to update user:', error);
-                          alert(`Failed to update user: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                          showToast(`Failed to update user: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
                         }
                       }}
                     >
