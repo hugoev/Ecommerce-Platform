@@ -80,8 +80,20 @@ export const registerUser = createAsyncThunk(
   'auth/registerUser',
   async (userData: RegisterData, { rejectWithValue }) => {
     try {
+      // Register the user
       const user = await authApi.register(userData);
-      return user;
+      
+      // Automatically log in the user after registration to get JWT token
+      const loginResponse = await authApi.login({
+        username: userData.username,
+        password: userData.password,
+      });
+      
+      // Return both user and token (same format as login)
+      return {
+        user: loginResponse.user,
+        token: loginResponse.token,
+      };
     } catch (error: unknown) {
       return rejectWithValue((error as Error).message);
     }
@@ -128,12 +140,13 @@ const authSlice = createSlice({
         state.status = 'loading';
         state.error = null;
       })
-      .addCase(registerUser.fulfilled, (state, action: PayloadAction<User>) => {
+      .addCase(registerUser.fulfilled, (state, action: PayloadAction<{ user: User; token: string }>) => {
         state.status = 'succeeded';
         state.isAuthenticated = true;
-        state.user = action.payload;
-        // Store user in localStorage for persistence
-        localStorage.setItem('user', JSON.stringify(action.payload));
+        state.user = action.payload.user;
+        // Store user and token in localStorage for persistence
+        localStorage.setItem('user', JSON.stringify(action.payload.user));
+        localStorage.setItem('token', action.payload.token);
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.status = 'failed';
