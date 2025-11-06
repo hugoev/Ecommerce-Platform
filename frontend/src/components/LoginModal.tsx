@@ -89,6 +89,41 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess, message }: LoginMo
             </div>
           )}
 
+          {/* Demo Credentials */}
+          <div className="border-t pt-4">
+            <p className="text-sm font-medium text-text-muted mb-2">Demo Credentials:</p>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => {
+                    setCredentials({ username: 'admin', password: 'admin123' });
+                  }}
+                >
+                  Use Admin
+                </Button>
+                <span className="text-xs text-text-muted">admin / admin123</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => {
+                    setCredentials({ username: 'john_doe', password: 'password123' });
+                  }}
+                >
+                  Use User
+                </Button>
+                <span className="text-xs text-text-muted">john_doe / password123</span>
+              </div>
+            </div>
+          </div>
+
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancel

@@ -46,6 +46,43 @@ export function LoginPage() {
             <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}
+          
+          {/* Demo Credentials */}
+          <div className="border-t pt-4 mt-4">
+            <p className="text-sm font-medium text-text-muted mb-2">Demo Credentials:</p>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => {
+                    setUsername('admin');
+                    setPassword('admin123');
+                  }}
+                >
+                  Use Admin
+                </Button>
+                <span className="text-xs text-text-muted">admin / admin123</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => {
+                    setUsername('john_doe');
+                    setPassword('password123');
+                  }}
+                >
+                  Use User
+                </Button>
+                <span className="text-xs text-text-muted">john_doe / password123</span>
+              </div>
+            </div>
+          </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
           <Button className="w-full" onClick={handleLogin} disabled={status === 'loading'}>
