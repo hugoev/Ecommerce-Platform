@@ -168,18 +168,46 @@ export function OrderHistoryPage() {
 
                 {/* Order Actions */}
                 <div className="flex flex-col sm:flex-row gap-2 pt-4">
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      // Order details are already shown in the card
+                      // Could expand to show more details or open a modal
+                      alert(`Order #${order.id}\nStatus: ${order.status}\nTotal: $${order.total.toFixed(2)}\nItems: ${order.items.length}`);
+                    }}
+                  >
                     View Details
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      alert(`Tracking information for Order #${order.id} will be available once the order ships.`);
+                    }}
+                  >
                     Track Package
                   </Button>
-                  {order.status === "Delivered" && (
-                    <Button variant="outline" size="sm">
+                  {order.status === "DELIVERED" && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        alert('Review functionality coming soon!');
+                      }}
+                    >
                       Leave Review
                     </Button>
                   )}
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      // Add all items from this order back to cart
+                      alert(`Adding ${order.items.length} item(s) from Order #${order.id} to cart...`);
+                      // TODO: Implement reorder functionality
+                    }}
+                  >
                     Reorder
                   </Button>
                 </div>
@@ -195,7 +223,7 @@ export function OrderHistoryPage() {
             <Package className="h-16 w-16 mx-auto text-text-muted mb-4" />
             <h3 className="text-xl font-semibold mb-2">No orders found</h3>
             <p className="text-text-muted mb-4">You haven't placed any orders yet.</p>
-            <Button>Browse Products</Button>
+            <Button onClick={() => window.location.href = '/products'}>Browse Products</Button>
           </CardContent>
         </Card>
       )}

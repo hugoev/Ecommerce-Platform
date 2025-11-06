@@ -202,8 +202,7 @@ export const adminApi = {
 
   // Discount Code Management
   getAllDiscountCodes(): Promise<DiscountCodeResponse[]> {
-    return apiService.get<{ success: boolean; data: DiscountCodeResponse[] }>('/api/admin/discount-codes')
-      .then(response => response.data);
+    return apiService.get<DiscountCodeResponse[]>('/api/admin/discount-codes');
   },
 
   createDiscountCode(discount: CreateDiscountCodeRequest): Promise<DiscountCodeResponse> {

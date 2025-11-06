@@ -18,7 +18,7 @@ import { useNavigate } from "react-router-dom";
 export function CartPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { cart, loading, error, fetchCart, updateQuantity, removeItem, applyDiscount: applyDiscountToCart } = useCart();
+  const { cart, loading, error, fetchCart, updateQuantity, removeItem, applyDiscount: applyDiscountToCart, increaseQuantity, decreaseQuantity } = useCart();
   const { items } = useItems();
   const [discountCode, setDiscountCode] = useState("");
   const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
@@ -104,7 +104,19 @@ export function CartPage() {
       if (newQuantity <= 0) {
         await removeItem(userId, itemId);
       } else {
-        await updateQuantity(userId, itemId, newQuantity);
+        // Use increase/decrease endpoints for better semantics
+        const currentItem = cart?.items.find(item => item.itemId === itemId);
+        if (currentItem) {
+          const quantityDiff = newQuantity - currentItem.quantity;
+          if (quantityDiff > 0) {
+            await increaseQuantity(userId, itemId, quantityDiff);
+          } else if (quantityDiff < 0) {
+            await decreaseQuantity(userId, itemId, Math.abs(quantityDiff));
+          }
+        } else {
+          // Fallback to updateQuantity if item not found
+          await updateQuantity(userId, itemId, newQuantity);
+        }
       }
     } else {
       // User is not logged in - use guest cart

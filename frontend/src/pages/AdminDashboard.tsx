@@ -11,8 +11,9 @@ import { useAdminOrders } from "@/hooks/useAdminOrders";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
 import { useItems } from "@/hooks/useItems";
 import { useSales } from "@/hooks/useSales";
-import { adminApi } from "@/api/admin";
-import { DollarSign, Edit, Loader2, Package, Plus, ShoppingCart, Trash2, Upload, Users } from "lucide-react";
+import { adminApi, type AdminUserResponse } from "@/api/admin";
+import type { Order } from "@/types";
+import { DollarSign, Edit, Loader2, Package, Plus, ShoppingCart, Trash2, Upload, Users, Eye } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -51,8 +52,8 @@ export function AdminDashboard() {
 
   const { items, loading, error, createItem, updateItem, deleteItem } = useItems();
   const { orders: adminOrders, updateOrderStatus, fetchAllOrders } = useAdminOrders();
-  const { users, fetchUsers } = useAdminUsers();
-  const { discountCodes, createDiscountCode } = useAdminDiscounts();
+  const { users, fetchUsers, updateUser, deleteUser } = useAdminUsers();
+  const { discountCodes, createDiscountCode, updateDiscountCode, toggleDiscountCode, deleteDiscountCode, fetchDiscountCodes } = useAdminDiscounts();
   const { salesItems, loading: salesLoading, createSalesItem, updateSalesItem, deleteSalesItem, toggleActive: toggleSalesActive } = useSales();
 
   // Calculate stats from real data
@@ -65,6 +66,9 @@ export function AdminDashboard() {
 
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [editingOrderStatus, setEditingOrderStatus] = useState<{ orderId: number; status: string } | null>(null);
+  const [editingUser, setEditingUser] = useState<AdminUserResponse | null>(null);
+  const [editingDiscountCode, setEditingDiscountCode] = useState<{ id: number; code: string; discountPercentage: number; expiryDate?: string; active: boolean } | null>(null);
+  const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
 
   // Form state for adding/editing products
   const [productForm, setProductForm] = useState({
@@ -79,6 +83,12 @@ export function AdminDashboard() {
   // Form state for user management
   const [userSearch, setUserSearch] = useState('');
   const [selectedUserAction, setSelectedUserAction] = useState('');
+  const [userEditForm, setUserEditForm] = useState({
+    firstName: '',
+    lastName: '',
+    address: '',
+    phone: ''
+  });
 
   // Form state for discount codes
   const [discountForm, setDiscountForm] = useState({
@@ -200,12 +210,25 @@ export function AdminDashboard() {
         expiryDate = date.toISOString();
       }
 
-      await createDiscountCode({
-        code: discountForm.code,
-        discountPercentage,
-        expiryDate,
-        active: true
-      });
+      if (editingDiscountCode) {
+        // Update existing discount code
+        await updateDiscountCode(editingDiscountCode.id, {
+          code: discountForm.code,
+          discountPercentage,
+          expiryDate,
+          active: editingDiscountCode.active
+        });
+        alert('Discount code updated successfully!');
+      } else {
+        // Create new discount code
+        await createDiscountCode({
+          code: discountForm.code,
+          discountPercentage,
+          expiryDate,
+          active: true
+        });
+        alert('Discount code created successfully!');
+      }
 
       setDiscountForm({
         code: '',
@@ -213,9 +236,12 @@ export function AdminDashboard() {
         discountValue: '',
         expiryDate: ''
       });
+      setEditingDiscountCode(null);
       setShowDiscountDialog(false);
+      await fetchDiscountCodes();
     } catch (error) {
-      console.error('Failed to create discount code:', error);
+      console.error('Failed to create/update discount code:', error);
+      alert(`Failed to ${editingDiscountCode ? 'update' : 'create'} discount code: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -426,8 +452,38 @@ export function AdminDashboard() {
                           {user.isActive ? 'Active' : 'Inactive'}
                         </span>
                         <div className="flex gap-1">
-                          <Button size="sm" variant="outline">View</Button>
-                          <Button size="sm" variant="outline">Edit</Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => {
+                              setEditingUser(user);
+                              setUserEditForm({
+                                firstName: user.fullName?.split(' ')[0] || '',
+                                lastName: user.fullName?.split(' ').slice(1).join(' ') || '',
+                                address: user.address || '',
+                                phone: user.phone || ''
+                              });
+                            }}
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            View
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => {
+                              setEditingUser(user);
+                              setUserEditForm({
+                                firstName: user.fullName?.split(' ')[0] || '',
+                                lastName: user.fullName?.split(' ').slice(1).join(' ') || '',
+                                address: user.address || '',
+                                phone: user.phone || ''
+                              });
+                            }}
+                          >
+                            <Edit className="h-3 w-3 mr-1" />
+                            Edit
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -468,8 +524,44 @@ export function AdminDashboard() {
                       {discount.active ? 'Active' : 'Inactive'}
                     </span>
                     <div className="flex gap-1">
-                      <Button size="sm" variant="outline">Edit</Button>
-                      <Button size="sm" variant="outline">Toggle</Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => {
+                          setEditingDiscountCode({
+                            id: discount.id,
+                            code: discount.code,
+                            discountPercentage: discount.discountPercentage,
+                            expiryDate: discount.expiryDate,
+                            active: discount.active
+                          });
+                          setDiscountForm({
+                            code: discount.code,
+                            discountType: 'percentage',
+                            discountValue: discount.discountPercentage.toString(),
+                            expiryDate: discount.expiryDate ? discount.expiryDate.split('T')[0] : ''
+                          });
+                          setShowDiscountDialog(true);
+                        }}
+                      >
+                        <Edit className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            await toggleDiscountCode(discount.id);
+                            await fetchDiscountCodes();
+                          } catch (error) {
+                            console.error('Failed to toggle discount code:', error);
+                            alert(`Failed to toggle discount code: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                          }
+                        }}
+                      >
+                        Toggle
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -487,7 +579,7 @@ export function AdminDashboard() {
         <Dialog open={showDiscountDialog} onOpenChange={setShowDiscountDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create Discount Code</DialogTitle>
+              <DialogTitle>{editingDiscountCode ? 'Edit Discount Code' : 'Create Discount Code'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreateDiscountCode} className="space-y-4">
               <div className="mb-4 flex justify-end">
@@ -496,20 +588,30 @@ export function AdminDashboard() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const demoCodes = [
-                      { code: 'DEMO25', discountType: 'percentage', discountValue: '25', expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() },
-                      { code: 'SAVE15', discountType: 'percentage', discountValue: '15', expiryDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString() },
-                      { code: 'WELCOME10', discountType: 'percentage', discountValue: '10', expiryDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString() },
-                    ];
-                    const randomCode = demoCodes[Math.floor(Math.random() * demoCodes.length)];
-                    // Convert ISO string to date input format (YYYY-MM-DD) for display, but store full ISO string
-                    const dateForInput = randomCode.expiryDate.split('T')[0];
-                    setDiscountForm({
-                      code: randomCode.code,
-                      discountType: randomCode.discountType as 'percentage' | 'fixed',
-                      discountValue: randomCode.discountValue,
-                      expiryDate: dateForInput // Store date-only for the input field
-                    });
+                    if (editingDiscountCode) {
+                      setEditingDiscountCode(null);
+                      setDiscountForm({
+                        code: '',
+                        discountType: 'percentage',
+                        discountValue: '',
+                        expiryDate: ''
+                      });
+                    } else {
+                      const demoCodes = [
+                        { code: 'DEMO25', discountType: 'percentage', discountValue: '25', expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() },
+                        { code: 'SAVE15', discountType: 'percentage', discountValue: '15', expiryDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString() },
+                        { code: 'WELCOME10', discountType: 'percentage', discountValue: '10', expiryDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString() },
+                      ];
+                      const randomCode = demoCodes[Math.floor(Math.random() * demoCodes.length)];
+                      // Convert ISO string to date input format (YYYY-MM-DD) for display, but store full ISO string
+                      const dateForInput = randomCode.expiryDate.split('T')[0];
+                      setDiscountForm({
+                        code: randomCode.code,
+                        discountType: randomCode.discountType as 'percentage' | 'fixed',
+                        discountValue: randomCode.discountValue,
+                        expiryDate: dateForInput // Store date-only for the input field
+                      });
+                    }
                   }}
                 >
                   🎯 Fill Demo Data
@@ -561,8 +663,22 @@ export function AdminDashboard() {
                 />
               </div>
               <div className="flex gap-2">
-                <Button type="submit" className="flex-1">Create Code</Button>
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setShowDiscountDialog(false)}>
+                <Button type="submit" className="flex-1">{editingDiscountCode ? 'Update Code' : 'Create Code'}</Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="flex-1" 
+                  onClick={() => {
+                    setShowDiscountDialog(false);
+                    setEditingDiscountCode(null);
+                    setDiscountForm({
+                      code: '',
+                      discountType: 'percentage',
+                      discountValue: '',
+                      expiryDate: ''
+                    });
+                  }}
+                >
                   Cancel
                 </Button>
               </div>
@@ -1046,18 +1162,21 @@ export function AdminDashboard() {
                   </span>
                 </div>
                 <div className="flex space-x-2">
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setViewingOrder(order)}
+                  >
+                    <Eye className="h-3 w-3 mr-1" />
                     View
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    Edit
                   </Button>
                   <Button 
                     variant="outline" 
                     size="sm"
                     onClick={() => setEditingOrderStatus({ orderId: order.id, status: order.status })}
                   >
-                    Update Status
+                    <Edit className="h-3 w-3 mr-1" />
+                    Edit Status
                   </Button>
                 </div>
               </div>
@@ -1104,6 +1223,146 @@ export function AdminDashboard() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Order Details Modal */}
+          {viewingOrder && (
+            <Dialog open={!!viewingOrder} onOpenChange={() => setViewingOrder(null)}>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Order Details - #{viewingOrder.id}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Customer</Label>
+                      <p className="font-medium">{viewingOrder.username}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Order Date</Label>
+                      <p className="font-medium">{new Date(viewingOrder.orderDate).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Status</Label>
+                      <p className="font-medium">{viewingOrder.status}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Total</Label>
+                      <p className="font-medium">${viewingOrder.total.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground mb-2 block">Order Items</Label>
+                    <div className="space-y-2">
+                      {viewingOrder.items.map((item, idx) => (
+                        <div key={idx} className="flex justify-between p-2 border rounded">
+                          <span>{item.itemName} × {item.quantity}</span>
+                          <span>${item.priceAtPurchase.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Subtotal</Label>
+                      <p className="font-medium">${viewingOrder.subtotal.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Tax</Label>
+                      <p className="font-medium">${viewingOrder.tax.toFixed(2)}</p>
+                    </div>
+                    {viewingOrder.discountAmount > 0 && (
+                      <>
+                        <div>
+                          <Label className="text-sm text-muted-foreground">Discount</Label>
+                          <p className="font-medium text-green-600">-${viewingOrder.discountAmount.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <Label className="text-sm text-muted-foreground">Discount Code</Label>
+                          <p className="font-medium">{viewingOrder.appliedDiscountCode}</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button variant="outline" onClick={() => setViewingOrder(null)}>Close</Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {/* User Edit/View Modal */}
+          {editingUser && (
+            <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>User Details - {editingUser.username}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-firstName">First Name</Label>
+                    <Input
+                      id="edit-firstName"
+                      value={userEditForm.firstName}
+                      onChange={(e) => setUserEditForm({...userEditForm, firstName: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-lastName">Last Name</Label>
+                    <Input
+                      id="edit-lastName"
+                      value={userEditForm.lastName}
+                      onChange={(e) => setUserEditForm({...userEditForm, lastName: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-address">Address</Label>
+                    <Textarea
+                      id="edit-address"
+                      value={userEditForm.address}
+                      onChange={(e) => setUserEditForm({...userEditForm, address: e.target.value})}
+                      rows={3}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-phone">Phone</Label>
+                    <Input
+                      id="edit-phone"
+                      value={userEditForm.phone}
+                      onChange={(e) => setUserEditForm({...userEditForm, phone: e.target.value})}
+                    />
+                  </div>
+                  <div className="flex gap-2 justify-end pt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setEditingUser(null)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={async () => {
+                        try {
+                          await updateUser(editingUser.id, {
+                            fullName: `${userEditForm.firstName} ${userEditForm.lastName}`.trim(),
+                            address: userEditForm.address,
+                            phone: userEditForm.phone
+                          });
+                          await fetchUsers();
+                          setEditingUser(null);
+                          alert('User updated successfully!');
+                        } catch (error) {
+                          console.error('Failed to update user:', error);
+                          alert(`Failed to update user: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                        }
+                      }}
+                    >
+                      Save Changes
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           )}
 
           <div className="mt-6 p-4 bg-muted/50 rounded-lg">

@@ -2,6 +2,7 @@ package com.group7.ecommerce.springbackend.order;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -23,5 +24,6 @@ public class DiscountCode {
 
     private OffsetDateTime expiryDate;
 
+    @JsonProperty("active")
     private boolean isActive;
 }
