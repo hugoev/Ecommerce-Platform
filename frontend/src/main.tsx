@@ -12,7 +12,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <Provider store={store}>
         <ToastProvider>
-          <App />
+        <App />
         </ToastProvider>
       </Provider>
     </ThemeProvider>

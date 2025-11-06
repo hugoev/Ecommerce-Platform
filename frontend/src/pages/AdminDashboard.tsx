@@ -1,4 +1,4 @@
-import { adminApi, type AdminUserResponse } from "@/api/admin";
+import type { AdminUserResponse } from "@/api/admin";
 import { itemHelpers, itemsApi } from "@/api/items";
 import type { RootState } from "@/app/store";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { useItems } from "@/hooks/useItems";
 import { useSales } from "@/hooks/useSales";
 import type { Order } from "@/types";
 import { DollarSign, Edit, Eye, Loader2, Package, Plus, ShoppingCart, Trash2, Upload, Users } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
@@ -25,6 +25,7 @@ export function AdminDashboard() {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const token = localStorage.getItem('token');
   const { showToast } = useToast();
+  const hasRedirected = useRef(false);
 
   // Helper function to format sale dates
   const formatSaleDate = (dateString: string | undefined): string => {
@@ -64,13 +65,24 @@ export function AdminDashboard() {
 
   // Check authentication and admin role
   useEffect(() => {
+    // Reset redirect flag if user becomes authenticated and is admin
+    if (isAuthenticated && token && user?.role === 'ROLE_ADMIN') {
+      hasRedirected.current = false;
+      return;
+    }
+
+    // Prevent multiple redirects/toasts
+    if (hasRedirected.current) return;
+
     if (!isAuthenticated || !token) {
+      hasRedirected.current = true;
       showToast('Please log in to access the admin dashboard', 'error');
       navigate('/login');
       return;
     }
     
     if (user?.role !== 'ROLE_ADMIN') {
+      hasRedirected.current = true;
       showToast('Admin access required', 'error');
       navigate('/');
       return;
@@ -102,11 +114,22 @@ export function AdminDashboard() {
     totalRevenue: adminOrders.reduce((sum, order) => sum + order.total, 0)
   };
 
+  // Calculate order statistics from real data
+  const orderStats = useMemo(() => {
+    return {
+      total: adminOrders.length,
+      delivered: adminOrders.filter(order => order.status?.toUpperCase() === 'DELIVERED').length,
+      processing: adminOrders.filter(order => order.status?.toUpperCase() === 'PROCESSING' || order.status?.toUpperCase() === 'SHIPPED').length,
+      pending: adminOrders.filter(order => order.status?.toUpperCase() === 'PENDING').length,
+    };
+  }, [adminOrders]);
+
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingOrderStatus, setEditingOrderStatus] = useState<{ orderId: number; status: string } | null>(null);
   const [editingUser, setEditingUser] = useState<AdminUserResponse | null>(null);
   const [viewingUser, setViewingUser] = useState<AdminUserResponse | null>(null);
+  const [userToDelete, setUserToDelete] = useState<AdminUserResponse | null>(null);
   const [editingDiscountCode, setEditingDiscountCode] = useState<{ id: number; code: string; discountPercentage: number; expiryDate?: string; active: boolean } | null>(null);
   const [editingSalesItem, setEditingSalesItem] = useState<{ id: number; itemId: number; salePrice: number; saleStartDate: string; saleEndDate: string } | null>(null);
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
@@ -123,7 +146,6 @@ export function AdminDashboard() {
 
   // Form state for user management
   const [userSearch, setUserSearch] = useState('');
-  const [selectedUserAction, setSelectedUserAction] = useState('');
   const [userEditForm, setUserEditForm] = useState({
     firstName: '',
     lastName: '',
@@ -483,38 +505,14 @@ export function AdminDashboard() {
     }
   };
 
-  const handleUserAction = async () => {
-    if (!selectedUserAction || !userSearch) return;
-
-    const user = users.find(u => u.username === userSearch || u.fullName.toLowerCase().includes(userSearch.toLowerCase()));
-    if (!user) {
-      showToast('User not found', 'error');
-      return;
-    }
-
+  const handleDeleteUser = async (userId: number) => {
     try {
-      switch (selectedUserAction) {
-        case 'deactivate':
-          await adminApi.deactivateUser(user.id);
-          // Success - no alert needed
-          break;
-        case 'delete':
-          try {
-            await adminApi.deleteUser(user.id);
-            showToast('User deleted successfully', 'success');
-          } catch (error) {
-            console.error('Failed to delete user:', error);
-            showToast(`Failed to delete user: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
-          }
-          break;
-        default:
-          showToast(`Action "${selectedUserAction}" - Please use the Edit button for user modifications`, 'error');
-      }
-      // Refresh users list
+      await deleteUser(userId);
+      showToast('User deleted successfully', 'success');
       await fetchUsers();
     } catch (error) {
-      console.error('Failed to perform user action:', error);
-      showToast(`Failed to ${selectedUserAction} user: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      console.error('Failed to delete user:', error);
+      showToast(`Failed to delete user: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
   };
 
@@ -621,23 +619,8 @@ export function AdminDashboard() {
                 onChange={(e) => setUserSearch(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="user-action">Action</Label>
-              <Select id="user-action" value={selectedUserAction} onValueChange={setSelectedUserAction}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select action" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="view">View Profile</SelectItem>
-                  <SelectItem value="edit">Edit User</SelectItem>
-                  <SelectItem value="deactivate">Deactivate Account</SelectItem>
-                  <SelectItem value="delete">Delete Account</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button className="w-full" onClick={handleUserAction}>Apply Action</Button>
 
-            <div className="mt-6">
+            <div className="mt-4">
               {(() => {
                 // Filter users based on search
                 const filteredUsers = userSearch
@@ -701,6 +684,18 @@ export function AdminDashboard() {
                           >
                             <Edit className="h-3 w-3 mr-1" />
                             <span className="hidden sm:inline">Edit</span>
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            className="h-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUserToDelete(user);
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            <span className="hidden sm:inline">Delete</span>
                           </Button>
                         </div>
                       </div>
@@ -1737,23 +1732,57 @@ export function AdminDashboard() {
             )}
           </Dialog>
 
+          {/* User Delete Confirmation Dialog */}
+          <Dialog open={!!userToDelete} onOpenChange={() => setUserToDelete(null)}>
+            {userToDelete && (
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete User</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Are you sure you want to delete user <strong>{userToDelete.username}</strong>? This action cannot be undone.
+                  </p>
+                  <div className="flex gap-2 justify-end">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setUserToDelete(null)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="default"
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                      onClick={async () => {
+                        await handleDeleteUser(userToDelete.id);
+                        setUserToDelete(null);
+                      }}
+                    >
+                      Delete User
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            )}
+          </Dialog>
+
           <div className="mt-6 p-4 bg-muted/50 rounded-lg">
             <h4 className="font-medium mb-3">Order Statistics</h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div className="text-center">
-                <p className="font-bold text-lg">342</p>
+                <p className="font-bold text-lg">{orderStats.total}</p>
                 <p className="text-text-muted">Total Orders</p>
               </div>
               <div className="text-center">
-                <p className="font-bold text-lg text-green-600">289</p>
-                <p className="text-text-muted">Completed</p>
+                <p className="font-bold text-lg text-green-600">{orderStats.delivered}</p>
+                <p className="text-text-muted">Delivered</p>
               </div>
               <div className="text-center">
-                <p className="font-bold text-lg text-blue-600">45</p>
+                <p className="font-bold text-lg text-blue-600">{orderStats.processing}</p>
                 <p className="text-text-muted">Processing</p>
               </div>
               <div className="text-center">
-                <p className="font-bold text-lg text-yellow-600">8</p>
+                <p className="font-bold text-lg text-yellow-600">{orderStats.pending}</p>
                 <p className="text-text-muted">Pending</p>
               </div>
             </div>
