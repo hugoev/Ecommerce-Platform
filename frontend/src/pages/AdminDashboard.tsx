@@ -15,7 +15,7 @@ import { useItems } from "@/hooks/useItems";
 import { useSales } from "@/hooks/useSales";
 import type { Order } from "@/types";
 import { DollarSign, Edit, Eye, Loader2, Package, Plus, ShoppingCart, Trash2, Upload, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
@@ -103,6 +103,7 @@ export function AdminDashboard() {
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [editingOrderStatus, setEditingOrderStatus] = useState<{ orderId: number; status: string } | null>(null);
   const [editingUser, setEditingUser] = useState<AdminUserResponse | null>(null);
+  const [viewingUser, setViewingUser] = useState<AdminUserResponse | null>(null);
   const [editingDiscountCode, setEditingDiscountCode] = useState<{ id: number; code: string; discountPercentage: number; expiryDate?: string; active: boolean } | null>(null);
   const [editingSalesItem, setEditingSalesItem] = useState<{ id: number; itemId: number; salePrice: number; saleStartDate: string; saleEndDate: string } | null>(null);
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
@@ -153,6 +154,91 @@ export function AdminDashboard() {
 
   // Image upload state
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Memoized callbacks for dialogs to prevent unnecessary re-renders
+  const handleViewUserClose = useCallback((open: boolean) => {
+    if (!open) {
+      setViewingUser(null);
+    }
+  }, []);
+
+  const handleEditUserClose = useCallback((open: boolean) => {
+    if (!open) {
+      setEditingUser(null);
+    }
+  }, []);
+
+  // Memoize dialog children to prevent recreation on every render
+  const viewUserDialogContent = useMemo(() => {
+    if (!viewingUser) return null;
+    return (
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>User Details - {viewingUser.username}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-sm text-muted-foreground">Username</Label>
+            <p className="font-medium">{viewingUser.username}</p>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm text-muted-foreground">Full Name</Label>
+            <p className="font-medium">{viewingUser.fullName || 'N/A'}</p>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm text-muted-foreground">Address</Label>
+            <p className="font-medium">{viewingUser.address || 'N/A'}</p>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm text-muted-foreground">Phone</Label>
+            <p className="font-medium">{viewingUser.phone || 'N/A'}</p>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm text-muted-foreground">Role</Label>
+            <p className="font-medium">{viewingUser.role.replace('ROLE_', '')}</p>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm text-muted-foreground">Status</Label>
+            <span className={`px-2 py-1 rounded-full text-xs inline-block ${
+              viewingUser.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+            }`}>
+              {viewingUser.isActive ? 'Active' : 'Inactive'}
+            </span>
+          </div>
+          <div className="flex gap-2 justify-end pt-4">
+            <Button 
+              variant="outline" 
+              onClick={(e) => {
+                e.stopPropagation();
+                const userToEdit = viewingUser;
+                setViewingUser(null);
+                setTimeout(() => {
+                  setEditingUser(userToEdit);
+                  setUserEditForm({
+                    firstName: userToEdit.fullName?.split(' ')[0] || '',
+                    lastName: userToEdit.fullName?.split(' ').slice(1).join(' ') || '',
+                    address: userToEdit.address || '',
+                    phone: userToEdit.phone || ''
+                  });
+                }, 150);
+              }}
+            >
+              Edit User
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={(e) => {
+                e.stopPropagation();
+                setViewingUser(null);
+              }}
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    );
+  }, [viewingUser]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -221,6 +307,8 @@ export function AdminDashboard() {
     try {
       await updateOrderStatus(orderId, newStatus);
       setEditingOrderStatus(null);
+      // Reset filter to 'all' so the updated order is visible
+      setOrderFilterStatus('all');
       // Refresh orders to get updated data
       await fetchAllOrders();
     } catch (error) {
@@ -426,9 +514,11 @@ export function AdminDashboard() {
   const getFilteredAndSortedOrders = () => {
     let filteredOrders = adminOrders;
 
-    // Filter by status
+    // Filter by status (case-insensitive comparison)
     if (orderFilterStatus !== 'all') {
-      filteredOrders = adminOrders.filter(order => order.status === orderFilterStatus);
+      filteredOrders = adminOrders.filter(order => 
+        order.status?.toUpperCase() === orderFilterStatus.toUpperCase()
+      );
     }
 
     // Sort orders
@@ -518,14 +608,14 @@ export function AdminDashboard() {
               <Label htmlFor="search-users">Search Users</Label>
               <Input
                 id="search-users"
-                placeholder="Search by name or email"
+                placeholder="Search by username or name"
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="user-action">Action</Label>
-              <Select value={selectedUserAction} onValueChange={setSelectedUserAction}>
+              <Select id="user-action" value={selectedUserAction} onValueChange={setSelectedUserAction}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select action" />
                 </SelectTrigger>
@@ -540,14 +630,25 @@ export function AdminDashboard() {
             <Button className="w-full" onClick={handleUserAction}>Apply Action</Button>
 
             <div className="mt-6">
-              <h4 className="font-medium mb-3">Users ({users.length})</h4>
-              {users.length === 0 ? (
-                <div className="text-center text-muted-foreground py-4">
-                  No users found.
-                </div>
-              ) : (
-                <div className="max-h-64 overflow-y-auto space-y-2">
-                  {users.slice(0, 5).map((user) => (
+              {(() => {
+                // Filter users based on search
+                const filteredUsers = userSearch
+                  ? users.filter(user => 
+                      user.username.toLowerCase().includes(userSearch.toLowerCase()) ||
+                      user.fullName?.toLowerCase().includes(userSearch.toLowerCase())
+                    )
+                  : users;
+                
+                return (
+                  <>
+                    <h4 className="font-medium mb-3">Users ({filteredUsers.length})</h4>
+                    {filteredUsers.length === 0 ? (
+                      <div className="text-center text-muted-foreground py-4">
+                        {userSearch ? 'No users found matching your search.' : 'No users found.'}
+                      </div>
+                    ) : (
+                      <div className="max-h-64 overflow-y-auto space-y-2">
+                        {filteredUsers.slice(0, 10).map((user) => (
                     <div key={user.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 border rounded-lg">
                       <div className="flex-1 min-w-0">
                         <div className="font-medium truncate">{user.fullName}</div>
@@ -565,14 +666,10 @@ export function AdminDashboard() {
                             size="sm" 
                             variant="outline"
                             className="h-8"
-                            onClick={() => {
-                              setEditingUser(user);
-                              setUserEditForm({
-                                firstName: user.fullName?.split(' ')[0] || '',
-                                lastName: user.fullName?.split(' ').slice(1).join(' ') || '',
-                                address: user.address || '',
-                                phone: user.phone || ''
-                              });
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingUser(null); // Close edit modal if open
+                              setViewingUser(user);
                             }}
                           >
                             <Eye className="h-3 w-3 mr-1" />
@@ -582,7 +679,9 @@ export function AdminDashboard() {
                             size="sm" 
                             variant="outline"
                             className="h-8"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setViewingUser(null); // Close view modal if open
                               setEditingUser(user);
                               setUserEditForm({
                                 firstName: user.fullName?.split(' ')[0] || '',
@@ -599,8 +698,11 @@ export function AdminDashboard() {
                       </div>
                     </div>
                   ))}
-                </div>
-              )}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </CardContent>
         </Card>
@@ -808,7 +910,7 @@ export function AdminDashboard() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="discount-type">Discount Type</Label>
-                <Select value={discountForm.discountType} onValueChange={(value) => setDiscountForm({...discountForm, discountType: value})}>
+                <Select id="discount-type" value={discountForm.discountType} onValueChange={(value) => setDiscountForm({...discountForm, discountType: value})}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -1038,7 +1140,7 @@ export function AdminDashboard() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="sale-products">Product Selection</Label>
-                <Select value={salesForm.productSelection} onValueChange={(value) => setSalesForm({...salesForm, productSelection: value})}>
+                <Select id="sale-products" value={salesForm.productSelection} onValueChange={(value) => setSalesForm({...salesForm, productSelection: value})}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -1242,6 +1344,7 @@ export function AdminDashboard() {
                 <div className="space-y-2">
                   <Label htmlFor="product-category">Category</Label>
                   <Select
+                    id="product-category"
                     value={productForm.category}
                     onValueChange={(value: string) => setProductForm({...productForm, category: value})}
                   >
@@ -1432,6 +1535,7 @@ export function AdminDashboard() {
                   <div>
                     <Label htmlFor="status">Status</Label>
                     <Select 
+                      id="status"
                       value={editingOrderStatus.status} 
                       onValueChange={(value) => setEditingOrderStatus({ ...editingOrderStatus, status: value })}
                     >
@@ -1532,12 +1636,17 @@ export function AdminDashboard() {
             </Dialog>
           )}
 
-          {/* User Edit/View Modal */}
-          {editingUser && (
-            <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
+          {/* User View Modal (Read-only) */}
+          <Dialog open={!!viewingUser} onOpenChange={handleViewUserClose}>
+            {viewUserDialogContent}
+          </Dialog>
+
+          {/* User Edit Modal */}
+          <Dialog open={!!editingUser} onOpenChange={handleEditUserClose}>
+            {editingUser && (
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>User Details - {editingUser.username}</DialogTitle>
+                  <DialogTitle>Edit User - {editingUser.username}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -1576,12 +1685,16 @@ export function AdminDashboard() {
                   <div className="flex gap-2 justify-end pt-4">
                     <Button 
                       variant="outline" 
-                      onClick={() => setEditingUser(null)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingUser(null);
+                      }}
                     >
                       Cancel
                     </Button>
                     <Button 
-                      onClick={async () => {
+                      onClick={async (e) => {
+                        e.stopPropagation();
                         try {
                           await updateUser(editingUser.id, {
                             fullName: `${userEditForm.firstName} ${userEditForm.lastName}`.trim(),
@@ -1602,8 +1715,8 @@ export function AdminDashboard() {
                   </div>
                 </div>
               </DialogContent>
-            </Dialog>
-          )}
+            )}
+          </Dialog>
 
           <div className="mt-6 p-4 bg-muted/50 rounded-lg">
             <h4 className="font-medium mb-3">Order Statistics</h4>

@@ -1,5 +1,6 @@
-import * as React from "react"
 import { X } from "lucide-react"
+import * as React from "react"
+import { createPortal } from "react-dom"
 
 import { cn } from "@/lib/utils"
 
@@ -9,7 +10,7 @@ interface DialogProps {
   onOpenChange?: (open: boolean) => void
 }
 
-interface DialogContentProps {
+interface DialogContentProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode
   className?: string
 }
@@ -29,15 +30,26 @@ interface DialogDescriptionProps {
   className?: string
 }
 
-const Dialog: React.FC<DialogProps> = ({ children, open, onOpenChange }) => {
-  if (!open) return null
+const Dialog: React.FC<DialogProps> = React.memo(({ children, open, onOpenChange }) => {
+  const [mounted, setMounted] = React.useState(false);
 
-  return (
+  React.useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  const handleOverlayClick = React.useCallback(() => {
+    onOpenChange?.(false);
+  }, [onOpenChange]);
+
+  if (!open || !mounted) return null
+
+  const dialogContent = (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Overlay */}
       <div
         className="fixed inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={() => onOpenChange?.(false)}
+        onClick={handleOverlayClick}
       />
 
       {/* Content */}
@@ -45,17 +57,39 @@ const Dialog: React.FC<DialogProps> = ({ children, open, onOpenChange }) => {
         {children}
       </div>
     </div>
-  )
-}
+  );
 
-const DialogContent: React.FC<DialogContentProps> = ({ children, className }) => (
-  <div className={cn(
-    "relative w-full max-w-lg bg-white rounded-lg shadow-lg p-6",
-    className
-  )}>
-    {children}
-  </div>
-)
+  return createPortal(dialogContent, document.body);
+});
+
+Dialog.displayName = "Dialog";
+
+const DialogContent: React.FC<DialogContentProps> = React.memo(({ children, className, onClick, ...props }) => {
+  const handleClick = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    onClick?.(e);
+  }, [onClick]);
+
+  const handleMouseDown = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+  }, []);
+
+  return (
+    <div 
+      className={cn(
+        "relative w-full max-w-lg bg-white rounded-lg shadow-lg p-6",
+        className
+      )}
+      onClick={handleClick}
+      onMouseDown={handleMouseDown}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+});
+
+DialogContent.displayName = "DialogContent";
 
 const DialogHeader: React.FC<DialogHeaderProps> = ({ children, className }) => (
   <div className={cn("mb-4", className)}>
@@ -101,12 +135,7 @@ const DialogFooter: React.FC<{ children: React.ReactNode; className?: string }> 
 )
 
 export {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogClose,
-  DialogTrigger,
-  DialogFooter,
+  Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader,
+  DialogTitle, DialogTrigger
 }
+
