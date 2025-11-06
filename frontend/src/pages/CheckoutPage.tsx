@@ -8,6 +8,8 @@ import { useOrders } from "@/hooks/useOrders";
 import { CreditCard, MapPin, CheckCircle, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import type { RootState } from "@/app/store";
 
 export function CheckoutPage() {
   const navigate = useNavigate();
@@ -16,6 +18,11 @@ export function CheckoutPage() {
   const [discountCode, setDiscountCode] = useState("");
   const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  
+  // Get current user from auth state
+  const user = useSelector((state: RootState) => state.auth.user);
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const userId = user?.id;
   
   // Form state for shipping and payment
   const [shippingInfo, setShippingInfo] = useState({
@@ -32,15 +39,23 @@ export function CheckoutPage() {
     cardName: ''
   });
 
-  // For demo purposes, using userId = 1 (you would get this from auth context)
-  const userId = 1;
-
   useEffect(() => {
-    fetchCart(userId);
-  }, [fetchCart, userId]);
+    if (isAuthenticated && userId) {
+      fetchCart(userId);
+    } else {
+      // Redirect to login if not authenticated
+      navigate('/login');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, isAuthenticated]);
 
   const handleApplyDiscount = async () => {
     if (!discountCode.trim()) return;
+    
+    if (!userId) {
+      alert("Please log in to apply discount codes.");
+      return;
+    }
     
     setIsApplyingDiscount(true);
     try {
@@ -55,6 +70,12 @@ export function CheckoutPage() {
   const handlePlaceOrder = async () => {
     if (!cart || cart.items.length === 0) {
       alert("Your cart is empty!");
+      return;
+    }
+
+    if (!userId) {
+      alert("Please log in to place an order.");
+      navigate('/login');
       return;
     }
 

@@ -26,4 +26,14 @@ public class DiscountCode {
 
     @JsonProperty("active")
     private boolean isActive;
+
+    @Column(name = "created_at", updatable = false)
+    private OffsetDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = OffsetDateTime.now();
+        }
+    }
 }

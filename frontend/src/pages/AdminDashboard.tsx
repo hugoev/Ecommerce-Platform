@@ -3,7 +3,7 @@ import { itemHelpers, itemsApi } from "@/api/items";
 import type { RootState } from "@/app/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -548,22 +548,23 @@ export function AdminDashboard() {
               ) : (
                 <div className="max-h-64 overflow-y-auto space-y-2">
                   {users.slice(0, 5).map((user) => (
-                    <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex-1">
-                        <div className="font-medium">{user.fullName}</div>
-                        <div className="text-sm text-muted-foreground">{user.username}</div>
+                    <div key={user.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 border rounded-lg">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{user.fullName}</div>
+                        <div className="text-sm text-muted-foreground truncate">{user.username}</div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <span className="text-sm">{user.role.replace('ROLE_', '')}</span>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
+                      <div className="flex items-center gap-2 sm:gap-3 flex-wrap shrink-0">
+                        <span className="text-sm whitespace-nowrap">{user.role.replace('ROLE_', '')}</span>
+                        <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${
                           user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                         }`}>
                           {user.isActive ? 'Active' : 'Inactive'}
                         </span>
-                        <div className="flex gap-1">
+                        <div className="flex gap-1.5">
                           <Button 
                             size="sm" 
                             variant="outline"
+                            className="h-8"
                             onClick={() => {
                               setEditingUser(user);
                               setUserEditForm({
@@ -575,11 +576,12 @@ export function AdminDashboard() {
                             }}
                           >
                             <Eye className="h-3 w-3 mr-1" />
-                            View
+                            <span className="hidden sm:inline">View</span>
                           </Button>
                           <Button 
                             size="sm" 
                             variant="outline"
+                            className="h-8"
                             onClick={() => {
                               setEditingUser(user);
                               setUserEditForm({
@@ -591,7 +593,7 @@ export function AdminDashboard() {
                             }}
                           >
                             <Edit className="h-3 w-3 mr-1" />
-                            Edit
+                            <span className="hidden sm:inline">Edit</span>
                           </Button>
                         </div>
                       </div>
@@ -603,78 +605,146 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Discount Code Management */}
-        <Card>
+        {/* Right Column: Discount Codes and Sales */}
+        <div className="flex flex-col gap-8">
+          {/* Discount Code Management */}
+          <Card className="self-start">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               Discount Codes
-              <DialogTrigger onClick={() => setShowDiscountDialog(true)}>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Code
-                </Button>
-              </DialogTrigger>
+              <Button size="sm" onClick={() => setShowDiscountDialog(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Code
+              </Button>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="pb-4">
             <div className="max-h-64 overflow-y-auto space-y-2">
-              {discountCodes.map((discount) => (
-                <div key={discount.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="font-mono font-bold">{discount.code}</div>
-                    <div className="text-sm text-muted-foreground">Created: {discount.createdAt ? new Date(discount.createdAt || '').toLocaleDateString() : 'Unknown'}</div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm">{discount.discountPercentage}%</span>
-                    <span className="text-sm">{discount.usageCount} uses</span>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      discount.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {discount.active ? 'Active' : 'Inactive'}
-                    </span>
-                    <div className="flex gap-1">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => {
-                          setEditingDiscountCode({
-                            id: discount.id,
-                            code: discount.code,
-                            discountPercentage: discount.discountPercentage,
-                            expiryDate: discount.expiryDate,
-                            active: discount.active
-                          });
-                          setDiscountForm({
-                            code: discount.code,
-                            discountType: 'percentage',
-                            discountValue: discount.discountPercentage.toString(),
-                            expiryDate: discount.expiryDate ? discount.expiryDate.split('T')[0] : ''
-                          });
-                          setShowDiscountDialog(true);
-                        }}
-                      >
-                        <Edit className="h-3 w-3 mr-1" />
-                        Edit
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={async () => {
-                          try {
-                            await toggleDiscountCode(discount.id);
-                            await fetchDiscountCodes();
-                          } catch (error) {
-                            console.error('Failed to toggle discount code:', error);
-                            alert(`Failed to toggle discount code: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                          }
-                        }}
-                      >
-                        Toggle
-                      </Button>
+              {discountCodes.map((discount) => {
+                // Normalize expiry date for display
+                const normalizeDate = (date: any): string | null => {
+                  if (!date) return null;
+                  if (typeof date === 'string') {
+                    const parsed = new Date(date);
+                    if (!isNaN(parsed.getTime()) && parsed.getFullYear() >= 2000) {
+                      return date;
+                    }
+                  }
+                  if (typeof date === 'number') {
+                    // Backend sends seconds as decimal, convert to milliseconds
+                    const milliseconds = date * 1000;
+                    const jsDate = new Date(milliseconds);
+                    if (!isNaN(jsDate.getTime()) && jsDate.getFullYear() >= 2000) {
+                      return jsDate.toISOString();
+                    }
+                  }
+                  if (Array.isArray(date) && date.length >= 3) {
+                    const [year, month, day] = date;
+                    if (year >= 2000) {
+                      const jsDate = new Date(Date.UTC(year, month - 1, day));
+                      return jsDate.toISOString();
+                    }
+                  }
+                  return null;
+                };
+
+                const expiryDateStr = normalizeDate(discount.expiryDate);
+                const expiryDate = expiryDateStr ? new Date(expiryDateStr) : null;
+                const isExpired = expiryDate && expiryDate < new Date();
+                
+                const createdAtStr = normalizeDate(discount.createdAt);
+                const createdAt = createdAtStr ? new Date(createdAtStr) : null;
+                
+                return (
+                  <div key={discount.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 border rounded-lg">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-mono font-bold truncate">{discount.code}</div>
+                      <div className="text-sm text-muted-foreground flex flex-wrap gap-x-2 gap-y-1">
+                        {createdAt ? (
+                          <span>Created: {createdAt.toLocaleDateString()}</span>
+                        ) : (
+                          <span>Created: Unknown</span>
+                        )}
+                        {expiryDate && (
+                          <span className={isExpired ? 'text-red-600 font-medium' : ''}>
+                            Expires: {expiryDate.toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                      <span className="text-sm font-semibold whitespace-nowrap">{discount.discountPercentage}%</span>
+                      <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${
+                        discount.active && !isExpired ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {discount.active && !isExpired ? 'Active' : isExpired ? 'Expired' : 'Inactive'}
+                      </span>
+                      <div className="flex gap-1.5">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="h-8"
+                          onClick={() => {
+                            setEditingDiscountCode({
+                              id: discount.id,
+                              code: discount.code,
+                              discountPercentage: discount.discountPercentage,
+                              expiryDate: expiryDateStr || discount.expiryDate,
+                              active: discount.active
+                            });
+                            setDiscountForm({
+                              code: discount.code,
+                              discountType: 'percentage',
+                              discountValue: discount.discountPercentage.toString(),
+                              expiryDate: expiryDateStr ? expiryDateStr.split('T')[0] : ''
+                            });
+                            setShowDiscountDialog(true);
+                          }}
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          <span className="hidden sm:inline">Edit</span>
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="h-8"
+                          onClick={async () => {
+                            try {
+                              await toggleDiscountCode(discount.id);
+                              await fetchDiscountCodes();
+                            } catch (error) {
+                              console.error('Failed to toggle discount code:', error);
+                              alert(`Failed to toggle discount code: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                            }
+                          }}
+                        >
+                          <span className="hidden sm:inline">Toggle</span>
+                          <span className="sm:hidden">On/Off</span>
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="h-8"
+                          onClick={async () => {
+                            if (confirm(`Are you sure you want to delete discount code "${discount.code}"?`)) {
+                              try {
+                                await deleteDiscountCode(discount.id);
+                                await fetchDiscountCodes();
+                                alert('Discount code deleted successfully!');
+                              } catch (error) {
+                                console.error('Failed to delete discount code:', error);
+                                alert(`Failed to delete discount code: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                              }
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {discountCodes.length === 0 && (
                 <div className="text-center text-muted-foreground py-8">
                   No discount codes yet. Create your first discount code to get started.
@@ -795,20 +865,18 @@ export function AdminDashboard() {
           </DialogContent>
         </Dialog>
 
-        {/* Sales Items */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              Sales & Promotions
-              <DialogTrigger onClick={() => setShowSalesDialog(true)}>
-                <Button size="sm">
+          {/* Sales Items */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Sales & Promotions
+                <Button size="sm" onClick={() => setShowSalesDialog(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Create Sale
                 </Button>
-              </DialogTrigger>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
             <div className="max-h-64 overflow-y-auto space-y-2">
               {salesLoading ? (
                 <div className="text-center text-muted-foreground py-8">
@@ -821,9 +889,9 @@ export function AdminDashboard() {
                 </div>
               ) : (
                 salesItems.map((sale) => (
-                  <div key={sale.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex-1">
-                      <div className="font-medium">{sale.title}</div>
+                  <div key={sale.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 border rounded-lg">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{sale.title}</div>
                       <div className="text-sm text-muted-foreground">
                         {sale.saleStartDate && sale.saleEndDate && sale.saleStartDate !== '' && sale.saleEndDate !== '' ? (
                           <>
@@ -834,21 +902,22 @@ export function AdminDashboard() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap shrink-0">
                       <div className="text-right">
                         <div className="text-sm line-through text-muted-foreground">${sale.originalPrice.toFixed(2)}</div>
                         <div className="text-green-600 font-bold">${sale.salePrice.toFixed(2)}</div>
                       </div>
-                      <span className="text-sm">{sale.discountPercentage.toFixed(0)}% off</span>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
+                      <span className="text-sm whitespace-nowrap">{sale.discountPercentage.toFixed(0)}% off</span>
+                      <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${
                         sale.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                       }`}>
                         {sale.isActive ? 'Active' : 'Inactive'}
                       </span>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1.5">
                         <Button 
                           size="sm" 
                           variant="outline"
+                          className="h-8"
                           onClick={() => {
                             setEditingSalesItem({
                               id: sale.id,
@@ -868,11 +937,12 @@ export function AdminDashboard() {
                           }}
                         >
                           <Edit className="h-3 w-3 mr-1" />
-                          Edit
+                          <span className="hidden sm:inline">Edit</span>
                         </Button>
                         <Button 
                           size="sm" 
-                          variant="outline" 
+                          variant="outline"
+                          className="h-8"
                           onClick={async () => {
                             try {
                               await toggleSalesActive(sale.id);
@@ -882,11 +952,13 @@ export function AdminDashboard() {
                             }
                           }}
                         >
-                          Toggle
+                          <span className="hidden sm:inline">Toggle</span>
+                          <span className="sm:hidden">On/Off</span>
                         </Button>
                         <Button 
                           size="sm" 
-                          variant="outline" 
+                          variant="outline"
+                          className="h-8"
                           onClick={async () => {
                             if (confirm('Are you sure you want to delete this sale?')) {
                               try {
@@ -898,7 +970,7 @@ export function AdminDashboard() {
                             }
                           }}
                         >
-                          Delete
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
@@ -907,7 +979,8 @@ export function AdminDashboard() {
               )}
             </div>
           </CardContent>
-        </Card>
+          </Card>
+        </div>
 
         {/* Sales Creation Dialog */}
         <Dialog open={showSalesDialog} onOpenChange={setShowSalesDialog}>

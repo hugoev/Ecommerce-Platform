@@ -68,24 +68,12 @@ export function useAdminDiscounts(): UseAdminDiscountsState & UseAdminDiscountsA
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
-      const newDiscount = await adminApi.createDiscountCode(discount);
-      const discountCode: DiscountCode = {
-        id: newDiscount.id,
-        code: newDiscount.code,
-        discountPercentage: newDiscount.discountPercentage,
-        expiryDate: newDiscount.expiryDate,
-        active: newDiscount.active ?? true,
-        createdAt: new Date().toISOString(),
-        usageCount: 0,
-      };
-
-      setState(prev => ({
-        ...prev,
-        discountCodes: [...prev.discountCodes, discountCode],
-        loading: false,
-      }));
-
-      return discountCode;
+      await adminApi.createDiscountCode(discount);
+      // Refresh the list to get the actual createdAt from the database
+      await fetchDiscountCodes();
+      
+      setState(prev => ({ ...prev, loading: false }));
+      return null; // Return value not needed since we refresh the list
     } catch (error) {
       setState(prev => ({
         ...prev,
@@ -94,7 +82,7 @@ export function useAdminDiscounts(): UseAdminDiscountsState & UseAdminDiscountsA
       }));
       return null;
     }
-  }, []);
+  }, [fetchDiscountCodes]);
 
   const updateDiscountCode = useCallback(async (id: number, updates: Partial<CreateDiscountCodeRequest>) => {
     setState(prev => ({ ...prev, loading: true, error: null }));

@@ -93,14 +93,44 @@ const apiService = {
 export const ordersApi = {
   // Place a new order (requires user ID)
   placeOrder(userId: number): Promise<OrderResponse> {
-    return apiService.post<{ success: boolean; data: OrderResponse }, {}>(`/api/orders/${userId}/place`, {})
-      .then(response => response.data);
+    return apiService.post<OrderResponse, {}>(`/api/orders/${userId}/place`, {})
+      .then(response => {
+        // Backend returns OrderDto directly (not wrapped in ApiResponse)
+        // Map orderItems to items and userUsername to username
+        return {
+          id: response.id,
+          orderDate: response.orderDate,
+          status: response.status,
+          total: response.total,
+          subtotal: response.subtotal,
+          tax: response.tax,
+          discountAmount: response.discountAmount || 0,
+          appliedDiscountCode: response.appliedDiscountCode,
+          username: response.username || (response as any).userUsername || '',
+          items: response.items || (response as any).orderItems || [],
+        };
+      });
   },
 
   // Get user's orders (requires user ID)
   getUserOrders(userId: number): Promise<OrderResponse[]> {
-    return apiService.get<{ success: boolean; data: OrderResponse[] }>(`/api/orders/${userId}`)
-      .then(response => response.data);
+    return apiService.get<OrderResponse[]>(`/api/orders/${userId}`)
+      .then(response => {
+        // Backend returns OrderDto[] directly (not wrapped in ApiResponse)
+        // Map orderItems to items and userUsername to username
+        return Array.isArray(response) ? response.map(order => ({
+          id: order.id || (order as any).id,
+          orderDate: order.orderDate || (order as any).orderDate,
+          status: order.status || (order as any).status,
+          total: order.total || (order as any).total,
+          subtotal: order.subtotal || (order as any).subtotal,
+          tax: order.tax || (order as any).tax,
+          discountAmount: order.discountAmount || (order as any).discountAmount || 0,
+          appliedDiscountCode: order.appliedDiscountCode || (order as any).appliedDiscountCode,
+          username: order.username || (order as any).userUsername || '',
+          items: order.items || (order as any).orderItems || [],
+        })) : [];
+      });
   },
 
   // Get order by ID (requires user ID for security)
@@ -138,14 +168,14 @@ export const orderHelpers = {
       total: order.total,
       subtotal: order.subtotal,
       tax: order.tax,
-      discountAmount: order.discountAmount,
+      discountAmount: order.discountAmount || 0,
       appliedDiscountCode: order.appliedDiscountCode,
-      username: order.username,
-      items: order.items.map(item => ({
+      username: order.username || '',
+      items: (order.items && Array.isArray(order.items) ? order.items : []).map(item => ({
         itemId: item.itemId,
-        itemName: item.itemName,
-        quantity: item.quantity,
-        priceAtPurchase: item.priceAtPurchase,
+        itemName: item.itemName || 'Unknown Item',
+        quantity: item.quantity || 0,
+        priceAtPurchase: item.priceAtPurchase || 0,
       })),
     };
   },

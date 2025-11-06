@@ -40,7 +40,7 @@ public class OrderController {
     }
 
     @PostMapping("/{userId}/place")
-    public ResponseEntity<Order> placeOrder(@PathVariable Long userId) {
+    public ResponseEntity<OrderDto> placeOrder(@PathVariable Long userId) {
         try {
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new NoSuchElementException("User not found"));
@@ -56,7 +56,7 @@ public class OrderController {
             // Clear the cart after successful order placement
             cartService.clearCart(userId);
 
-            return ResponseEntity.ok(order);
+            return ResponseEntity.ok(toDto(order));
         } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
@@ -65,10 +65,13 @@ public class OrderController {
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<List<Order>> getUserOrders(@PathVariable Long userId) {
+    public ResponseEntity<List<OrderDto>> getUserOrders(@PathVariable Long userId) {
         try {
             List<Order> orders = orderRepository.findByUserIdOrderByOrderDateDesc(userId);
-            return ResponseEntity.ok(orders);
+            List<OrderDto> orderDtos = orders.stream()
+                    .map(this::toDto)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(orderDtos);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }

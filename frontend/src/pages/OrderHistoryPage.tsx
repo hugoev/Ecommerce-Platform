@@ -3,17 +3,34 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useOrders } from "@/hooks/useOrders";
 import { Calendar, DollarSign, Package, User } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
+import type { RootState } from "@/app/store";
+import { useNavigate } from "react-router-dom";
 
 export function OrderHistoryPage() {
+  const navigate = useNavigate();
   const [sortBy, setSortBy] = useState("date-desc");
   const { orders, loading, error, fetchOrders } = useOrders();
   
-  // For demo purposes, using userId = 1 (you would get this from auth context)
-  const userId = 1;
+  // Get current user from auth state
+  const user = useSelector((state: RootState) => state.auth.user);
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const userId = user?.id;
+
+  // Fetch orders on mount and when userId changes
+  useEffect(() => {
+    if (isAuthenticated && userId) {
+      fetchOrders(userId);
+    } else if (!isAuthenticated) {
+      // Redirect to login if not authenticated
+      navigate('/login');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, isAuthenticated]);
 
   // Sort orders based on selected criteria
-  const sortedOrders = [...orders].sort((a, b) => {
+  const sortedOrders = (orders && Array.isArray(orders) ? [...orders] : []).sort((a, b) => {
     switch (sortBy) {
       case 'date-desc':
         return new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime();
@@ -42,6 +59,17 @@ export function OrderHistoryPage() {
     }
   };
 
+  if (!isAuthenticated || !userId) {
+    return (
+      <div className="container py-8 px-4 max-w-6xl mx-auto">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold mb-2">Order History</h1>
+          <p className="text-text-muted">Please log in to view your orders.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="container py-8 px-4 max-w-6xl mx-auto">
@@ -59,7 +87,7 @@ export function OrderHistoryPage() {
         <div className="text-center">
           <h1 className="text-4xl font-bold mb-2">Order History</h1>
           <p className="text-red-600 mb-4">Error: {error}</p>
-          <Button onClick={() => fetchOrders(userId)}>Try Again</Button>
+          <Button onClick={() => userId && fetchOrders(userId)}>Try Again</Button>
         </div>
       </div>
     );
@@ -82,42 +110,12 @@ export function OrderHistoryPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="date-desc">
-                <div className="flex items-center">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Date: Newest First
-                </div>
-              </SelectItem>
-              <SelectItem value="date-asc">
-                <div className="flex items-center">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Date: Oldest First
-                </div>
-              </SelectItem>
-              <SelectItem value="amount-desc">
-                <div className="flex items-center">
-                  <DollarSign className="h-4 w-4 mr-2" />
-                  Amount: High to Low
-                </div>
-              </SelectItem>
-              <SelectItem value="amount-asc">
-                <div className="flex items-center">
-                  <DollarSign className="h-4 w-4 mr-2" />
-                  Amount: Low to High
-                </div>
-              </SelectItem>
-              <SelectItem value="status">
-                <div className="flex items-center">
-                  <Package className="h-4 w-4 mr-2" />
-                  Status
-                </div>
-              </SelectItem>
-              <SelectItem value="customer">
-                <div className="flex items-center">
-                  <User className="h-4 w-4 mr-2" />
-                  Customer
-                </div>
-              </SelectItem>
+              <SelectItem value="date-desc">Date: Newest First</SelectItem>
+              <SelectItem value="date-asc">Date: Oldest First</SelectItem>
+              <SelectItem value="amount-desc">Amount: High to Low</SelectItem>
+              <SelectItem value="amount-asc">Amount: Low to High</SelectItem>
+              <SelectItem value="status">Status</SelectItem>
+              <SelectItem value="customer">Customer</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -155,7 +153,7 @@ export function OrderHistoryPage() {
                 <div>
                   <h4 className="font-medium mb-2">Items:</h4>
                   <div className="space-y-2">
-                    {order.items.map((item, index) => (
+                    {(order.items && Array.isArray(order.items) ? order.items : []).map((item, index) => (
                       <div key={index} className="flex justify-between items-center py-2 border-b border-border last:border-b-0">
                         <span className="text-sm">{item.itemName}</span>
                         <span className="text-sm text-text-muted">

@@ -1,6 +1,6 @@
 import { orderHelpers, ordersApi } from '@/api/orders';
 import type { Order } from '@/types';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 interface UseOrdersState {
   orders: Order[];
@@ -20,7 +20,7 @@ export function useOrders(): UseOrdersState & UseOrdersActions {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchOrders = async (userId: number) => {
+  const fetchOrders = useCallback(async (userId: number) => {
     try {
       setLoading(true);
       setError(null);
@@ -32,7 +32,7 @@ export function useOrders(): UseOrdersState & UseOrdersActions {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const placeOrder = async (userId: number): Promise<Order | null> => {
     try {
