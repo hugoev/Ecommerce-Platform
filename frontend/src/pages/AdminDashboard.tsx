@@ -269,13 +269,28 @@ export function AdminDashboard() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select an image file', 'error');
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Image size must be less than 5MB', 'error');
+      return;
+    }
+
     setUploadingImage(true);
     try {
       const imageUrl = await itemsApi.uploadImage(file);
       setProductForm({ ...productForm, imageUrl });
+      showToast('Image uploaded successfully', 'success');
+      // Reset the file input so the same file can be uploaded again if needed
+      e.target.value = '';
     } catch (error) {
       console.error('Failed to upload image:', error);
-      showToast('Failed to upload image. Please try again.', 'error');
+      showToast(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setUploadingImage(false);
     }
@@ -1385,26 +1400,6 @@ export function AdminDashboard() {
                       />
                     </div>
                     <div className="flex items-end">
-                      <label htmlFor="image-upload" className="cursor-pointer">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={uploadingImage}
-                          className="flex items-center gap-2"
-                        >
-                          {uploadingImage ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Uploading...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-4 w-4" />
-                              Upload
-                            </>
-                          )}
-                        </Button>
-                      </label>
                       <input
                         type="file"
                         accept="image/*"
@@ -1412,10 +1407,47 @@ export function AdminDashboard() {
                         className="hidden"
                         id="image-upload"
                       />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={uploadingImage}
+                        className="flex items-center gap-2"
+                        onClick={() => {
+                          const fileInput = document.getElementById('image-upload');
+                          if (fileInput) {
+                            fileInput.click();
+                          }
+                        }}
+                      >
+                        {uploadingImage ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4" />
+                            Upload
+                          </>
+                        )}
+                      </Button>
                     </div>
                   </div>
+                  {productForm.imageUrl && (
+                    <div className="mt-2">
+                      <img
+                        src={productForm.imageUrl}
+                        alt="Product preview"
+                        className="max-w-xs max-h-48 object-contain border rounded-lg"
+                        onError={(e) => {
+                          // If image fails to load, show placeholder
+                          (e.target as HTMLImageElement).src = '/placeholder-product.jpg';
+                        }}
+                      />
+                    </div>
+                  )}
                   <p className="text-xs text-muted-foreground">
-                    Upload an image file (JPG, PNG, etc.) or enter an image URL
+                    Upload an image file (JPG, PNG, etc.) or enter an image URL. Max size: 5MB
                   </p>
                 </div>
                 <div className="space-y-2 md:col-span-2">

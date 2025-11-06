@@ -40,7 +40,7 @@ import jakarta.validation.constraints.Min;
 @RestController
 @RequestMapping("/api/items")
 @Validated
-@CrossOrigin(origins = { "http://localhost:3000", "http://localhost:5173" })
+@CrossOrigin(origins = "*") // Allow all origins for public access
 public class ItemController {
     private final ItemService service;
 
@@ -186,7 +186,31 @@ public class ItemController {
 
             // Generate unique filename
             String originalFilename = StringUtils.cleanPath(file.getOriginalFilename());
-            String fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            if (originalFilename == null || originalFilename.isEmpty()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Invalid filename"));
+            }
+            
+            // Extract file extension safely
+            String fileExtension = ".img"; // Default extension
+            int lastDotIndex = originalFilename.lastIndexOf(".");
+            if (lastDotIndex > 0 && lastDotIndex < originalFilename.length() - 1) {
+                fileExtension = originalFilename.substring(lastDotIndex);
+            } else {
+                // If no extension, try to determine from content type
+                if (contentType != null) {
+                    if (contentType.contains("jpeg") || contentType.contains("jpg")) {
+                        fileExtension = ".jpg";
+                    } else if (contentType.contains("png")) {
+                        fileExtension = ".png";
+                    } else if (contentType.contains("gif")) {
+                        fileExtension = ".gif";
+                    } else if (contentType.contains("webp")) {
+                        fileExtension = ".webp";
+                    }
+                    // else keep default .img
+                }
+                // else keep default .img
+            }
             String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
 
             // Save file

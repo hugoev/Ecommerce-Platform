@@ -23,7 +23,11 @@ public class SecurityConfig {
         http.csrf().disable()
                 .authorizeHttpRequests(authz -> authz
                         // Public endpoints
-                        .requestMatchers("/api/auth/**", "/api/items/**", "/images/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/images/**").permitAll()
+                        // Image upload requires admin authentication (must come before general /api/items/**)
+                        .requestMatchers("/api/items/upload-image").hasAuthority("ROLE_ADMIN")
+                        // Public item endpoints (GET requests)
+                        .requestMatchers("/api/items/**").permitAll()
                         // Sales - GET is public, write operations require admin (handled by @PreAuthorize)
                         .requestMatchers("/api/sales").permitAll()
                         // Admin endpoints require admin role

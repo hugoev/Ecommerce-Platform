@@ -44,9 +44,14 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        # Set VITE_API_BASE_URL at build time
+        # For EC2 deployment, set this to: http://your-ec2-ip:8080
+        # Or use environment variable: VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8080}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
     container_name: ecommerce-frontend
     ports:
-      - "5173:80" # Map host port 5173 to container port 80
+      - "80:80" # Use standard HTTP port for production
     depends_on:
       - backend
     restart: unless-stopped

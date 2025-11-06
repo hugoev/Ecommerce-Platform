@@ -3,6 +3,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Accept build argument for API base URL
+ARG VITE_API_BASE_URL=http://localhost:8080
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
 # Copy package files and install dependencies
 COPY package.json ./
 # Copy package-lock.json if it exists, otherwise install without it

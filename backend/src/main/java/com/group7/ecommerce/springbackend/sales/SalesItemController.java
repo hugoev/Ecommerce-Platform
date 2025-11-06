@@ -21,7 +21,7 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/sales")
-@CrossOrigin(origins = { "http://localhost:3000", "http://localhost:5173" })
+@CrossOrigin(origins = "*") // Allow all origins for public access
 public class SalesItemController {
 
     private final SalesItemService salesItemService;

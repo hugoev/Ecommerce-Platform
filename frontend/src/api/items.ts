@@ -156,8 +156,15 @@ export const itemsApi = {
     const formData = new FormData();
     formData.append('file', file);
 
+    const token = localStorage.getItem('token');
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     return fetch(`${BASE_URL}/api/items/upload-image`, {
       method: 'POST',
+      headers: headers,
       body: formData,
     })
       .then(response => {
@@ -168,7 +175,16 @@ export const itemsApi = {
         }
         return response.json();
       })
-      .then(response => response.data);
+      .then(response => {
+        // If the response is a relative path, make it absolute
+        const imageUrl = response.data;
+        if (imageUrl && imageUrl.startsWith('/')) {
+          // Construct absolute URL using the base URL
+          const baseUrl = BASE_URL.replace(/\/$/, ''); // Remove trailing slash
+          return baseUrl + imageUrl;
+        }
+        return imageUrl;
+      });
   },
 };
 

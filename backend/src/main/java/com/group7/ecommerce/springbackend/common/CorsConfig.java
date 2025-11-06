@@ -16,10 +16,10 @@ public class CorsConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
-                .allowedOriginPatterns("http://localhost:*", "http://127.0.0.1:*")
+                .allowedOriginPatterns("*") // Allow all origins for public access
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders("*")
-                .allowCredentials(true)
+                .allowCredentials(false) // Must be false when using wildcard origins
                 .maxAge(3600);
     }
 
@@ -27,10 +27,9 @@ public class CorsConfig implements WebMvcConfigurer {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Allow specific origins (in production, specify exact domains)
-        configuration.setAllowedOriginPatterns(Arrays.asList(
-                "http://localhost:*",
-                "http://127.0.0.1:*"));
+        // Allow all origins for public internet access
+        // In production, you may want to restrict this to specific domains for security
+        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
 
         // Allow all HTTP methods
         configuration.setAllowedMethods(Arrays.asList(
@@ -39,8 +38,9 @@ public class CorsConfig implements WebMvcConfigurer {
         // Allow all headers
         configuration.setAllowedHeaders(Arrays.asList("*"));
 
-        // Allow credentials
-        configuration.setAllowCredentials(true);
+        // Note: allowCredentials cannot be true with wildcard origins
+        // Set to false for public access, or specify exact origins for credentials
+        configuration.setAllowCredentials(false);
 
         // Cache preflight response for 1 hour
         configuration.setMaxAge(3600L);
