@@ -25,6 +25,9 @@ services:
       - db # Ensures the database is started before the backend
     ports:
       - "8080:8080"
+    volumes:
+      # Persist uploaded images across container restarts
+      - ./backend/uploads:/app/uploads
     environment:
       # Connection string points to the 'db' service name
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}

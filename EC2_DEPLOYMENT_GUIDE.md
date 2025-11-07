@@ -81,9 +81,10 @@ cp .env.example .env
 nano .env
 ```
 
-Update the `.env` file with your configuration:
+Create the `.env` file with your configuration:
 
-```env
+```bash
+cat > .env << EOF
 # Database Configuration
 POSTGRES_DB=ecommerce
 POSTGRES_USER=ecommerce_user
@@ -91,43 +92,35 @@ POSTGRES_PASSWORD=your_secure_password_here
 
 # JWT Configuration
 # IMPORTANT: Generate a secure random string (at least 64 characters)
-# You can generate one with: openssl rand -base64 64
+# Generate with: openssl rand -base64 64
 JWT_SECRET=your_very_long_and_secure_jwt_secret_key_here_at_least_64_characters
 JWT_EXPIRATION=86400
+
+# Frontend API Base URL
+# IMPORTANT: Replace with your EC2 public IP address
+VITE_API_BASE_URL=http://YOUR-EC2-PUBLIC-IP:8080
+EOF
 ```
 
-**Important:** Generate a secure JWT secret:
+**Important:**
+
+1. Generate a secure JWT secret:
 
 ```bash
 openssl rand -base64 64
 ```
 
-### 3.3 Configure Frontend API URL
+2. Replace `YOUR-EC2-PUBLIC-IP` with your actual EC2 instance's public IP address. You can find it in the EC2 console or by running:
 
-The frontend uses `VITE_API_BASE_URL` environment variable. You have two options:
-
-**Option A: Set environment variable in Docker Compose (Recommended)**
-
-Edit `docker-compose.yml` and add to the frontend service:
-
-```yaml
-frontend:
-  build:
-    context: ./frontend
-    dockerfile: Dockerfile
-  container_name: ecommerce-frontend
-  ports:
-    - "80:80" # Changed from 5173:80 to use standard HTTP port
-  environment:
-    - VITE_API_BASE_URL=http://your-ec2-public-ip:8080
-  depends_on:
-    - backend
-  restart: unless-stopped
+```bash
+curl http://169.254.169.254/latest/meta-data/public-ipv4
 ```
 
-**Option B: Build frontend with environment variable**
+### 3.3 Verify Configuration
 
-Edit `frontend/Dockerfile` to accept build args, or set it during build.
+The `docker-compose.yml` is already configured to read `VITE_API_BASE_URL` from your `.env` file. Just make sure you've set it correctly in step 3.2 above.
+
+The frontend will be built with the API URL you specified, and the backend will be accessible at port 8080.
 
 ## Step 4: Deploy Application
 

@@ -846,12 +846,12 @@ export function AdminDashboard() {
                           variant="outline"
                           className="h-8"
                           onClick={async () => {
-                            try {
-                              await deleteDiscountCode(discount.id);
-                              await fetchDiscountCodes();
+                              try {
+                                await deleteDiscountCode(discount.id);
+                                await fetchDiscountCodes();
                               showToast('Discount code deleted successfully', 'success');
-                            } catch (error) {
-                              console.error('Failed to delete discount code:', error);
+                              } catch (error) {
+                                console.error('Failed to delete discount code:', error);
                               showToast(`Failed to delete discount code: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
                             }
                           }}
@@ -1078,11 +1078,11 @@ export function AdminDashboard() {
                           variant="outline"
                           className="h-8"
                           onClick={async () => {
-                            try {
-                              await deleteSalesItem(sale.id);
+                              try {
+                                await deleteSalesItem(sale.id);
                               showToast('Sale deleted successfully', 'success');
-                            } catch (error) {
-                              console.error('Failed to delete sale:', error);
+                              } catch (error) {
+                                console.error('Failed to delete sale:', error);
                               showToast(`Failed to delete sale: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
                             }
                           }}
@@ -1277,11 +1277,11 @@ export function AdminDashboard() {
                       variant="outline"
                       size="sm"
                       onClick={async () => {
-                        try {
-                          await deleteItem(product.id);
+                          try {
+                            await deleteItem(product.id);
                           showToast('Product deleted successfully', 'success');
-                        } catch (error) {
-                          console.error('Failed to delete product:', error);
+                          } catch (error) {
+                            console.error('Failed to delete product:', error);
                           if (error instanceof Error && error.message) {
                             showToast(`Failed to delete product: ${error.message}`, 'error');
                           }
@@ -1407,30 +1407,30 @@ export function AdminDashboard() {
                         className="hidden"
                         id="image-upload"
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={uploadingImage}
-                        className="flex items-center gap-2"
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={uploadingImage}
+                          className="flex items-center gap-2"
                         onClick={() => {
                           const fileInput = document.getElementById('image-upload');
                           if (fileInput) {
                             fileInput.click();
                           }
                         }}
-                      >
-                        {uploadingImage ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Uploading...
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="h-4 w-4" />
-                            Upload
-                          </>
-                        )}
-                      </Button>
+                        >
+                          {uploadingImage ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-4 w-4" />
+                              Upload
+                            </>
+                          )}
+                        </Button>
                     </div>
                   </div>
                   {productForm.imageUrl && (
