@@ -135,15 +135,44 @@ cd "$PROJECT_DIR" || {
     exit 1
 }
 
-# Create .env file if it doesn't exist
-if [ ! -f ".env" ]; then
-    echo "📝 Creating .env file..."
-    
-    # Generate secure passwords
+# Create or update .env file
+echo "📝 Creating/updating .env file..."
+
+# Generate secure passwords (only if not already set)
+if [ ! -f ".env" ] || ! grep -q "^POSTGRES_PASSWORD=" .env; then
     DB_PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-25)
-    JWT_SECRET=$(openssl rand -base64 64 | tr -d "=+/" | cut -c1-64)
-    
-    cat > .env << EOF
+else
+    DB_PASSWORD=$(grep "^POSTGRES_PASSWORD=" .env | cut -d'=' -f2)
+fi
+
+if [ ! -f ".env" ] || ! grep -q "^JWT_SECRET=" .env; then
+    # Generate JWT secret: 64 bytes (512 bits) for HS512 algorithm
+    # Base64 encoding of 64 bytes = ~88 chars, we'll use first 88 to ensure >= 512 bits
+    JWT_SECRET=$(openssl rand -base64 64 | tr -d '\n' | head -c 88)
+    # If somehow still too short, generate longer
+    if [ ${#JWT_SECRET} -lt 64 ]; then
+        JWT_SECRET=$(openssl rand -hex 64)
+    fi
+else
+    JWT_SECRET=$(grep "^JWT_SECRET=" .env | cut -d'=' -f2)
+    # Validate existing JWT_SECRET is long enough (at least 64 chars for 512 bits)
+    if [ ${#JWT_SECRET} -lt 64 ]; then
+        echo "⚠️  Existing JWT_SECRET is too short, generating new one..."
+        JWT_SECRET=$(openssl rand -base64 64 | tr -d '\n' | head -c 88)
+        if [ ${#JWT_SECRET} -lt 64 ]; then
+            JWT_SECRET=$(openssl rand -hex 64)
+        fi
+    fi
+fi
+
+# Always update VITE_API_BASE_URL with current EC2 IP (no trailing slash)
+# Remove old VITE_API_BASE_URL line if it exists
+if [ -f ".env" ]; then
+    sed -i '/^VITE_API_BASE_URL=/d' .env
+fi
+
+# Create or update .env file
+cat > .env << EOF
 # Database Configuration
 POSTGRES_DB=ecommerce
 POSTGRES_USER=ecommerce_user
@@ -153,15 +182,12 @@ POSTGRES_PASSWORD=$DB_PASSWORD
 JWT_SECRET=$JWT_SECRET
 JWT_EXPIRATION=86400
 
-# Frontend API Base URL
+# Frontend API Base URL (always updated with current EC2 IP)
 VITE_API_BASE_URL=http://$EC2_IP:8080
 EOF
-    
-    echo "✅ .env file created with secure passwords"
-else
-    echo "ℹ️  .env file already exists, skipping creation"
-    echo "⚠️  Make sure VITE_API_BASE_URL is set to: http://$EC2_IP:8080"
-fi
+
+echo "✅ .env file created/updated"
+echo "   VITE_API_BASE_URL=http://$EC2_IP:8080"
 
 # Create uploads directory for images
 echo "📁 Creating uploads directory..."
@@ -226,6 +252,17 @@ fi
 # Build and start the application using Docker Compose
 echo "🔨 Building and starting application..."
 echo "⏳ This may take 5-10 minutes on first run..."
+
+# Verify .env file one more time before building
+echo "🔍 Verifying .env file..."
+if grep -q "^VITE_API_BASE_URL=http://$EC2_IP:8080$" .env; then
+    echo "✅ VITE_API_BASE_URL is correctly set"
+else
+    echo "⚠️  Fixing VITE_API_BASE_URL..."
+    sed -i '/^VITE_API_BASE_URL=/d' .env
+    echo "VITE_API_BASE_URL=http://$EC2_IP:8080" >> .env
+    echo "✅ Updated VITE_API_BASE_URL"
+fi
 
 # Build and start services
 docker_compose up --build -d || {
@@ -316,11 +353,11 @@ if [ "$USE_DOCKER_COMPOSE_PLUGIN" = true ]; then
     echo "   Stop services: docker compose down"
     echo "   Update code: git pull && docker compose up --build -d"
 else
-    echo "   View logs: docker-compose logs -f"
+echo "   View logs: docker-compose logs -f"
     echo "   View backend logs: docker-compose logs -f backend"
-    echo "   Restart services: docker-compose restart"
-    echo "   Stop services: docker-compose down"
-    echo "   Update code: git pull && docker-compose up --build -d"
+echo "   Restart services: docker-compose restart"
+echo "   Stop services: docker-compose down"
+echo "   Update code: git pull && docker-compose up --build -d"
 fi
 echo ""
 echo "📝 Troubleshooting:"
