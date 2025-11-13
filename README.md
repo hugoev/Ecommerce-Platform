@@ -398,11 +398,42 @@ npm run lint
 
 ## 🌐 Deployment
 
-### Deploy to EC2
+### Deploy to EC2 (Recommended - One Command)
 
-See `EC2_DEPLOYMENT_README.md` for full AWS deployment instructions.
+**For a fresh EC2 instance, use the complete deployment script:**
 
-Quick deploy:
+```bash
+# SSH into your EC2 instance
+ssh -i your-key.pem ubuntu@your-ec2-ip
+
+# Run the complete deployment script (handles everything automatically)
+curl -fsSL https://raw.githubusercontent.com/hugoev/Ecommerce-Platform/main/deploy-complete.sh | bash
+```
+
+**What the script does:**
+- ✅ Installs Docker and Docker Compose
+- ✅ Detects your EC2 IP automatically
+- ✅ Clones the repository
+- ✅ Stops conflicting services (Apache/Nginx)
+- ✅ Creates `.env` file with correct values
+- ✅ Generates secure JWT secret (64+ chars for HS512)
+- ✅ Sets correct `VITE_API_BASE_URL` (no trailing slash)
+- ✅ Builds and starts all services
+- ✅ Waits for services to be healthy
+- ✅ Shows you access URLs and credentials
+
+**Time:** 10-20 minutes on first run (depending on instance size)
+
+**After deployment, access:**
+- Frontend: `http://your-ec2-ip`
+- Backend API: `http://your-ec2-ip:8080`
+- API Docs: `http://your-ec2-ip:8080/swagger-ui.html`
+
+### Manual EC2 Deployment
+
+If you prefer manual setup, see `EC2_DEPLOYMENT_README.md` or `DEPLOY_TO_EC2.md` for detailed instructions.
+
+Quick manual deploy:
 
 ```bash
 # SSH into EC2 instance
@@ -411,32 +442,55 @@ ssh -i your-key.pem ubuntu@your-ec2-ip
 # Clone and deploy
 git clone https://github.com/hugoev/Ecommerce-Platform.git
 cd Ecommerce-Platform
+
+# Create .env file (see Environment Variables section below)
+# Then deploy
 docker compose up --build -d
 ```
 
 ### Environment Variables
 
-Create `.env` file in project root by copying the example:
+**Note:** The `deploy-complete.sh` script automatically creates the `.env` file with correct values. For manual setup:
+
+Create `.env` file in project root:
 
 ```bash
-cp .env.example .env
+# For local development
+cat > .env << EOF
+POSTGRES_DB=ecommerce
+POSTGRES_USER=ecommerce_user
+POSTGRES_PASSWORD=your_secure_password
+
+JWT_SECRET=$(openssl rand -base64 64 | tr -d '\n')
+JWT_EXPIRATION=86400
+
+VITE_API_BASE_URL=http://localhost:8080
+EOF
 ```
 
-The `.env.example` file contains:
+**For EC2 deployment**, the `.env` file should contain:
 
 ```env
 # Database Configuration
 POSTGRES_DB=ecommerce
 POSTGRES_USER=ecommerce_user
-POSTGRES_PASSWORD=ecommerce_password
+POSTGRES_PASSWORD=your_secure_password
 
 # JWT Configuration
-# Note: JWT_SECRET must be at least 64 characters (512 bits) for HS512 algorithm
-JWT_SECRET=eFZnij2luHbDudpVLguWd6JVGVXzAIhG2KGUUh2c5ZF168Lv3o54x/5SzxAik0VLEUGNYtD5ih6Cv00FzRgb5Q==
+# IMPORTANT: Must be at least 64 characters (512 bits) for HS512 algorithm
+# Generate with: openssl rand -base64 64
+JWT_SECRET=your_very_long_secret_key_at_least_64_characters_long
 JWT_EXPIRATION=86400
+
+# Frontend API Base URL
+# IMPORTANT: Use your EC2 public IP, no trailing slash!
+VITE_API_BASE_URL=http://YOUR-EC2-IP:8080
 ```
 
-**Important**: The JWT_SECRET must be at least 64 characters long for the HS512 algorithm to work properly.
+**Important Notes:**
+- `JWT_SECRET` must be at least 64 characters (512 bits) for HS512 algorithm
+- `VITE_API_BASE_URL` must NOT have a trailing slash
+- For EC2, replace `YOUR-EC2-IP` with your actual EC2 public IP address
 
 ## 🐛 Troubleshooting
 
@@ -563,7 +617,9 @@ docker compose logs frontend
 - `backend/README.md` - Backend architecture and best practices
 - `frontend/README.md` - Frontend structure and components
 - `FRONTEND_API_GUIDE.md` - Detailed API integration guide
-- `EC2_DEPLOYMENT_README.md` - AWS deployment guide
+- `EC2_DEPLOYMENT_README.md` - AWS deployment guide (detailed)
+- `DEPLOY_TO_EC2.md` - Quick EC2 deployment guide
+- `deploy-complete.sh` - **Complete automated deployment script** (recommended)
 - `INFO.md` - Original project requirements
 
 ## 👥 Team Members
