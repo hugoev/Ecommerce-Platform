@@ -81,7 +81,7 @@ export const registerUser = createAsyncThunk(
   async (userData: RegisterData, { rejectWithValue }) => {
     try {
       // Register the user
-      const user = await authApi.register(userData);
+      await authApi.register(userData);
       
       // Automatically log in the user after registration to get JWT token
       const loginResponse = await authApi.login({

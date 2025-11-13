@@ -1116,7 +1116,8 @@ export function AdminDashboard() {
                       showToast('Please add products first before creating a sale', 'error');
                       return;
                     }
-                    const randomItem = items[Math.floor(Math.random() * items.length)];
+                    // Note: In a real implementation, you'd select a random item here
+                    // For now, it will use the first item when creating the sale
                     const discounts = ['20', '25', '30', '35'];
                     const durations = ['7', '14', '30'];
                     setSalesForm({
@@ -1125,8 +1126,6 @@ export function AdminDashboard() {
                       productSelection: 'specific',
                       duration: durations[Math.floor(Math.random() * durations.length)]
                     });
-                    // Note: In a real implementation, you'd select the item here
-                    // For now, it will use the first item when creating the sale
                   }}
                 >
                   🎯 Fill Demo Data
