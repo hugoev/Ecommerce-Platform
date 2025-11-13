@@ -1,5 +1,6 @@
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+// Normalize BASE_URL to remove trailing slashes
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/+$/, '');
 
 export interface AdminUserResponse {
   id: number;
