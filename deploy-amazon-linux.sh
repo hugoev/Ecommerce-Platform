@@ -609,30 +609,74 @@ if ! grep -q "^VITE_API_BASE_URL=http://$EC2_IP:8080$" .env; then
     echo "VITE_API_BASE_URL=http://$EC2_IP:8080" >> .env
 fi
 
+# Verify build contexts exist before building
+echo "   Verifying build contexts..."
+if [ ! -d "backend" ]; then
+    echo "❌ Backend directory not found!"
+    exit 1
+fi
+if [ ! -d "frontend" ]; then
+    echo "❌ Frontend directory not found!"
+    exit 1
+fi
+if [ ! -f "backend/Dockerfile" ]; then
+    echo "❌ Backend Dockerfile not found!"
+    exit 1
+fi
+if [ ! -f "frontend/Dockerfile" ]; then
+    echo "❌ Frontend Dockerfile not found!"
+    exit 1
+fi
+echo "✅ Build contexts verified"
+
 # Build and start
 echo "   Building and starting Docker containers..."
 
-# Try building - if it fails due to buildx, try with sudo or alternative methods
-docker_compose up --build -d
+# Try building - first attempt with Buildx disabled (DOCKER_BUILDKIT=0) to avoid panic
+# This uses the legacy builder which is more stable
+echo "   Attempt 1: Building with legacy builder (DOCKER_BUILDKIT=0)..."
+DOCKER_BUILDKIT=0 docker_compose up --build -d
 BUILD_EXIT_CODE=$?
 
 if [ $BUILD_EXIT_CODE -ne 0 ]; then
     echo ""
-    echo "⚠️  First build attempt failed. Trying alternative methods..."
+    echo "⚠️  Legacy builder failed. Trying with Buildx enabled..."
     
-    # Check if it's a buildx error
-    if docker_compose up --build -d 2>&1 | grep -q "buildx"; then
-        echo "   Buildx issue detected. Trying to fix automatically..."
+    # Check if error is related to Buildx panic
+    BUILD_OUTPUT=$(docker_compose up --build -d 2>&1)
+    BUILD_EXIT_CODE=$?
+    
+    if echo "$BUILD_OUTPUT" | grep -qE "panic|slice bounds out of range|buildx"; then
+        echo "   Buildx panic detected. Attempting to fix..."
         
-        # Ensure buildx is accessible
-        if [ -f ~/.docker/cli-plugins/docker-buildx ]; then
-            # Try creating builder with sudo
-            sudo docker buildx create --name builder --use --bootstrap &> /dev/null 2>&1 || true
-            sudo docker buildx inspect --bootstrap &> /dev/null 2>&1 || true
+        # Remove any existing problematic builders
+        sudo docker buildx rm builder 2>/dev/null || true
+        sudo docker buildx prune -f 2>/dev/null || true
+        
+        # Try to create a fresh builder
+        echo "   Creating fresh Buildx builder..."
+        sudo docker buildx create --name builder --use --bootstrap --driver docker-container 2>/dev/null || \
+        sudo docker buildx create --name builder --use --bootstrap 2>/dev/null || true
+        
+        # Wait a moment for builder to initialize
+        sleep 2
+        
+        # Try building again with explicit Buildx
+        echo "   Retrying build with fresh builder..."
+        DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker_compose build --progress=plain 2>&1 | tail -20
+        if [ $? -eq 0 ]; then
+            echo "   Build succeeded, starting services..."
+            docker_compose up -d
+            BUILD_EXIT_CODE=$?
+        else
+            # Last resort: try without Buildx at all (force legacy builder)
+            echo "   Last resort: Using legacy builder without Buildx..."
+            DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker_compose up --build -d
+            BUILD_EXIT_CODE=$?
         fi
-        
-        # Try again with explicit sudo
-        echo "   Retrying with sudo..."
+    else
+        # Not a Buildx error, try with sudo
+        echo "   Trying with sudo..."
         if [ "$USE_DOCKER_COMPOSE_PLUGIN" = true ]; then
             sudo docker compose up --build -d
             BUILD_EXIT_CODE=$?
@@ -647,17 +691,20 @@ if [ $BUILD_EXIT_CODE -ne 0 ]; then
         echo "❌ Failed to start services (exit code: $BUILD_EXIT_CODE)"
         echo ""
         echo "Last error output:"
-        docker_compose up --build -d 2>&1 | tail -10
+        echo "$BUILD_OUTPUT" | tail -20
         echo ""
         echo "Troubleshooting:"
         echo "1. Check logs: docker_compose logs"
         echo "2. Check ports: sudo lsof -i :80 -i :8080"
         echo "3. Check Docker: sudo docker ps -a"
         echo "4. Check Docker daemon: sudo systemctl status docker"
+        echo "5. Try manual build: cd backend && sudo docker build -t ecommerce-backend ."
         echo ""
         echo "You can fix the issue and rerun this script - it will skip completed steps."
         exit 1
     fi
+else
+    echo "✅ Build succeeded with legacy builder"
 fi
 
 # Wait for services
