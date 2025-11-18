@@ -742,6 +742,14 @@ if [ $BUILD_EXIT_CODE -ne 0 ]; then
     fi
     
     if [ $BUILD_EXIT_CODE -ne 0 ]; then
+        # Ensure Buildx is restored even on failure
+        if [ -f ~/.docker/cli-plugins/docker-buildx.disabled ]; then
+            mv ~/.docker/cli-plugins/docker-buildx.disabled ~/.docker/cli-plugins/docker-buildx 2>/dev/null
+        fi
+        if [ -f /usr/local/lib/docker/cli-plugins/docker-buildx.disabled ]; then
+            sudo mv /usr/local/lib/docker/cli-plugins/docker-buildx.disabled /usr/local/lib/docker/cli-plugins/docker-buildx 2>/dev/null
+        fi
+        
         echo ""
         echo "❌ Failed to start services (exit code: $BUILD_EXIT_CODE)"
         echo ""
