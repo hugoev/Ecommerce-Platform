@@ -421,6 +421,7 @@ curl -fsSL https://raw.githubusercontent.com/hugoev/Ecommerce-Platform/main/depl
 ```
 
 **What the script does:**
+
 - ✅ Installs Docker and Docker Compose
 - ✅ Detects your EC2 IP automatically
 - ✅ Clones the repository
@@ -435,6 +436,7 @@ curl -fsSL https://raw.githubusercontent.com/hugoev/Ecommerce-Platform/main/depl
 **Time:** 10-20 minutes on first run (depending on instance size)
 
 **After deployment, access:**
+
 - Frontend: `http://your-ec2-ip`
 - Backend API: `http://your-ec2-ip:8080`
 - API Docs: `http://your-ec2-ip:8080/swagger-ui.html`
@@ -498,6 +500,7 @@ VITE_API_BASE_URL=http://YOUR-EC2-IP:8080
 ```
 
 **Important Notes:**
+
 - `JWT_SECRET` must be at least 64 characters (512 bits) for HS512 algorithm
 - `VITE_API_BASE_URL` must NOT have a trailing slash
 - For EC2, replace `YOUR-EC2-IP` with your actual EC2 public IP address
@@ -626,11 +629,9 @@ docker compose logs frontend
 
 - `backend/README.md` - Backend architecture and best practices
 - `frontend/README.md` - Frontend structure and components
-- `FRONTEND_API_GUIDE.md` - Detailed API integration guide
 - `deploy-amazon-linux.sh` - **Automated deployment script for Amazon Linux 2023** (recommended)
 - `rebuild-service.sh` - Helper script to rebuild individual services
 - `rebuild-backend.sh` - Helper script to rebuild only the backend service
-- `INFO.md` - Original project requirements
 
 ## 👥 Team Members
 
