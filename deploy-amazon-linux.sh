@@ -638,9 +638,24 @@ echo "✅ Build contexts verified"
 # Build and start
 echo "   Building and starting Docker containers..."
 
-# Try building - first attempt with Buildx disabled (DOCKER_BUILDKIT=0) to avoid panic
-# This uses the legacy builder which is more stable
-echo "   Attempt 1: Building with legacy builder (DOCKER_BUILDKIT=0)..."
+# Temporarily disable Buildx to force legacy builder (Docker Compose v2.40.3 ignores DOCKER_BUILDKIT=0 when Buildx is present)
+echo "   Attempt 1: Temporarily disabling Buildx to use legacy builder..."
+BUILDX_BACKUP_USER=""
+BUILDX_BACKUP_SYSTEM=""
+BUILDX_RESTORED=false
+
+# Backup and temporarily disable Buildx plugin
+if [ -f ~/.docker/cli-plugins/docker-buildx ] && [ -x ~/.docker/cli-plugins/docker-buildx ]; then
+    mv ~/.docker/cli-plugins/docker-buildx ~/.docker/cli-plugins/docker-buildx.disabled 2>/dev/null
+    BUILDX_BACKUP_USER="~/.docker/cli-plugins/docker-buildx.disabled"
+fi
+if [ -f /usr/local/lib/docker/cli-plugins/docker-buildx ] && [ -x /usr/local/lib/docker/cli-plugins/docker-buildx ]; then
+    sudo mv /usr/local/lib/docker/cli-plugins/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx.disabled 2>/dev/null
+    BUILDX_BACKUP_SYSTEM="/usr/local/lib/docker/cli-plugins/docker-buildx.disabled"
+fi
+
+# Try building with legacy builder (Buildx is now disabled)
+echo "   Building with legacy builder (DOCKER_BUILDKIT=0)..."
 export DOCKER_BUILDKIT=0
 export COMPOSE_DOCKER_CLI_BUILD=0
 if [ "$USE_DOCKER_COMPOSE_PLUGIN" = true ]; then
@@ -650,9 +665,31 @@ else
 fi
 BUILD_EXIT_CODE=$?
 
+# Restore Buildx plugin
+if [ -n "$BUILDX_BACKUP_USER" ] && [ -f ~/.docker/cli-plugins/docker-buildx.disabled ]; then
+    mv ~/.docker/cli-plugins/docker-buildx.disabled ~/.docker/cli-plugins/docker-buildx 2>/dev/null
+    BUILDX_RESTORED=true
+fi
+if [ -n "$BUILDX_BACKUP_SYSTEM" ] && [ -f /usr/local/lib/docker/cli-plugins/docker-buildx.disabled ]; then
+    sudo mv /usr/local/lib/docker/cli-plugins/docker-buildx.disabled /usr/local/lib/docker/cli-plugins/docker-buildx 2>/dev/null
+    BUILDX_RESTORED=true
+fi
+
+if [ "$BUILDX_RESTORED" = true ]; then
+    echo "   ✅ Buildx plugin restored"
+fi
+
 if [ $BUILD_EXIT_CODE -ne 0 ]; then
     echo ""
     echo "⚠️  Legacy builder failed. Trying with Buildx enabled..."
+    
+    # Ensure Buildx is restored before trying again
+    if [ -f ~/.docker/cli-plugins/docker-buildx.disabled ]; then
+        mv ~/.docker/cli-plugins/docker-buildx.disabled ~/.docker/cli-plugins/docker-buildx 2>/dev/null
+    fi
+    if [ -f /usr/local/lib/docker/cli-plugins/docker-buildx.disabled ]; then
+        sudo mv /usr/local/lib/docker/cli-plugins/docker-buildx.disabled /usr/local/lib/docker/cli-plugins/docker-buildx 2>/dev/null
+    fi
     
     # Check if error is related to Buildx panic
     BUILD_OUTPUT=$(docker_compose up --build -d 2>&1)
