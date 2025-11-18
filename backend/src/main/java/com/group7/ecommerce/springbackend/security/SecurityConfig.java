@@ -17,6 +17,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationEntryPoint unauthorizedHandler;
     private final JwtRequestFilter jwtRequestFilter;
+    private final RateLimitingFilter rateLimitingFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -40,6 +41,8 @@ public class SecurityConfig {
                 .exceptionHandling().authenticationEntryPoint(unauthorizedHandler).and()
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
 
+        // Add rate limiting filter before JWT filter
+        http.addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
