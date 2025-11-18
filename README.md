@@ -415,8 +415,7 @@ Before deploying, you need to create and configure an EC2 instance. Follow these
 
 **AMI (Amazon Machine Image):**
 
-- Select **Amazon Linux 2023 AMI** (recommended)
-- Or **Ubuntu 22.04 LTS** (alternative)
+- Select **Amazon Linux 2023 AMI**
 
 **Key Pair:**
 
@@ -499,11 +498,8 @@ curl -fsSL https://raw.githubusercontent.com/hugoev/Ecommerce-Platform/main/depl
 4. **Connect via SSH:**
 
 ```bash
-# For Amazon Linux
+# Connect to your instance
 ssh -i your-key.pem ec2-user@YOUR-EC2-IP
-
-# For Ubuntu
-ssh -i your-key.pem ubuntu@YOUR-EC2-IP
 ```
 
 **First-time SSH connection:**
