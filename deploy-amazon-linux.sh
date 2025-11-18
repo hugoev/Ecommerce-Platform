@@ -1,9 +1,12 @@
 #!/bin/bash
 
 # Amazon Linux 2023 Deployment Script for Ecommerce Platform
+# Version: 2.0 (Fixed Buildx panic - uses legacy builder)
 # Optimized for Amazon Linux 2023 (handles curl-minimal package conflict)
 # Safe to rerun - detects existing installations and skips completed steps
 # Run this on a fresh Amazon Linux EC2 instance: bash deploy-amazon-linux.sh
+#
+# To force fresh download: curl -fsSL "https://raw.githubusercontent.com/hugoev/Ecommerce-Platform/main/deploy-amazon-linux.sh?$(date +%s)" | bash
 
 # Don't exit on error - allow script to continue and show what failed
 set +e
@@ -454,10 +457,13 @@ echo "📥 Step 5/10: Cloning repository..."
 if [ -d "Ecommerce-Platform" ]; then
     echo "📁 Found existing Ecommerce-Platform directory"
     PROJECT_DIR="Ecommerce-Platform"
-    # Try to update if it's a git repo
+    # Try to update if it's a git repo - force fetch and reset to ensure latest code
     if [ -d "$PROJECT_DIR/.git" ]; then
-        echo "   Updating repository..."
-        cd "$PROJECT_DIR" && git pull 2>/dev/null && cd - > /dev/null || echo "   (Could not update, using existing code)"
+        echo "   Updating repository (forcing latest version)..."
+        cd "$PROJECT_DIR"
+        git fetch origin main 2>/dev/null || git fetch origin 2>/dev/null || true
+        git reset --hard origin/main 2>/dev/null || git reset --hard origin/HEAD 2>/dev/null || git pull 2>/dev/null || echo "   (Could not update, using existing code)"
+        cd - > /dev/null
     fi
     mark_completed "repo_cloned"
 elif [ -f "docker-compose.yml" ]; then
@@ -635,7 +641,13 @@ echo "   Building and starting Docker containers..."
 # Try building - first attempt with Buildx disabled (DOCKER_BUILDKIT=0) to avoid panic
 # This uses the legacy builder which is more stable
 echo "   Attempt 1: Building with legacy builder (DOCKER_BUILDKIT=0)..."
-DOCKER_BUILDKIT=0 docker_compose up --build -d
+export DOCKER_BUILDKIT=0
+export COMPOSE_DOCKER_CLI_BUILD=0
+if [ "$USE_DOCKER_COMPOSE_PLUGIN" = true ]; then
+    sudo -E DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker compose up --build -d
+else
+    sudo -E DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker-compose up --build -d
+fi
 BUILD_EXIT_CODE=$?
 
 if [ $BUILD_EXIT_CODE -ne 0 ]; then
@@ -671,7 +683,13 @@ if [ $BUILD_EXIT_CODE -ne 0 ]; then
         else
             # Last resort: try without Buildx at all (force legacy builder)
             echo "   Last resort: Using legacy builder without Buildx..."
-            DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker_compose up --build -d
+            export DOCKER_BUILDKIT=0
+            export COMPOSE_DOCKER_CLI_BUILD=0
+            if [ "$USE_DOCKER_COMPOSE_PLUGIN" = true ]; then
+                sudo -E DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker compose up --build -d
+            else
+                sudo -E DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker-compose up --build -d
+            fi
             BUILD_EXIT_CODE=$?
         fi
     else
