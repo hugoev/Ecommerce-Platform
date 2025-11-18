@@ -400,7 +400,17 @@ npm run lint
 
 ### Deploy to EC2 (Recommended - One Command)
 
-**For a fresh EC2 instance, use the complete deployment script:**
+**For Amazon Linux 2023 instances (recommended):**
+
+```bash
+# SSH into your EC2 instance
+ssh -i your-key.pem ec2-user@your-ec2-ip
+
+# Run the Amazon Linux optimized deployment script
+curl -fsSL https://raw.githubusercontent.com/hugoev/Ecommerce-Platform/main/deploy-amazon-linux.sh | bash
+```
+
+**For Ubuntu/Debian instances:**
 
 ```bash
 # SSH into your EC2 instance

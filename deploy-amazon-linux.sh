@@ -1,44 +1,39 @@
 #!/bin/bash
 
-# Complete EC2 Deployment Script for Ecommerce Platform
-# This script handles all deployment issues and sets up everything from scratch
-# Run this on a fresh EC2 instance: bash deploy-complete.sh
+# Amazon Linux 2023 Deployment Script for Ecommerce Platform
+# Optimized for Amazon Linux 2023 (handles curl-minimal package conflict)
+# Run this on a fresh Amazon Linux EC2 instance: bash deploy-amazon-linux.sh
 
 set -e
 
-echo "🚀 Ecommerce Platform - Complete EC2 Deployment"
-echo "================================================"
+echo "🚀 Ecommerce Platform - Amazon Linux 2023 Deployment"
+echo "====================================================="
 echo ""
 
-# Detect OS
-if command -v yum &> /dev/null; then
-    OS_TYPE="amazon"
-    echo "📍 Detected: Amazon Linux / RHEL"
-elif command -v apt &> /dev/null; then
-    OS_TYPE="ubuntu"
-    echo "📍 Detected: Ubuntu / Debian"
-else
-    echo "❌ Unsupported OS. This script supports Ubuntu/Debian and Amazon Linux."
+# Verify we're on Amazon Linux
+if ! command -v yum &> /dev/null; then
+    echo "❌ This script is designed for Amazon Linux / RHEL systems."
+    echo "   For Ubuntu/Debian, use: deploy-complete.sh"
     exit 1
 fi
 
-# Update system packages
+echo "📍 Detected: Amazon Linux / RHEL"
 echo ""
+
+# Update system packages
 echo "📦 Step 1/10: Updating system packages..."
-if [ "$OS_TYPE" = "amazon" ]; then
-    sudo yum update -y
-    # Amazon Linux 2023 has curl-minimal by default - skip installing curl to avoid conflicts
-    # curl-minimal works fine for our needs
-    if command -v curl &> /dev/null; then
-        echo "✅ curl is already available (curl-minimal)"
-        sudo yum install -y git wget openssl
-    else
-        echo "⚠️  curl not found, installing..."
-        sudo yum install -y git wget openssl curl --allowerasing || sudo yum install -y git wget openssl curl-minimal
-    fi
+sudo yum update -y
+
+# Install required packages (skip curl - curl-minimal is already installed and works fine)
+echo "📦 Installing required packages (git, wget)..."
+sudo yum install -y git wget openssl
+
+# Verify curl-minimal works (it should be installed by default)
+if ! command -v curl &> /dev/null; then
+    echo "⚠️  curl-minimal not found, installing curl..."
+    sudo yum install -y curl --allowerasing || sudo yum install -y curl-minimal
 else
-    sudo apt update && sudo apt upgrade -y
-    sudo apt install -y git curl wget
+    echo "✅ curl is available (curl-minimal)"
 fi
 
 # Install Docker
@@ -49,7 +44,18 @@ if ! command -v docker &> /dev/null; then
     sudo sh get-docker.sh
     sudo systemctl start docker
     sudo systemctl enable docker
-    sudo usermod -aG docker $USER
+    
+    # Add user to docker group (works for both ec2-user and ubuntu)
+    if id "ec2-user" &>/dev/null; then
+        sudo usermod -aG docker ec2-user
+        DOCKER_USER="ec2-user"
+    elif id "ubuntu" &>/dev/null; then
+        sudo usermod -aG docker ubuntu
+        DOCKER_USER="ubuntu"
+    else
+        sudo usermod -aG docker $USER
+        DOCKER_USER=$USER
+    fi
     
     # Verify Docker installation
     if sudo docker --version &> /dev/null; then
@@ -59,17 +65,18 @@ if ! command -v docker &> /dev/null; then
         exit 1
     fi
     
-    echo "⚠️  Note: You may need to log out and back in for Docker group changes"
+    echo "⚠️  Note: Docker group changes require logging out/in or using 'newgrp docker'"
     echo "   If you get permission errors, use: sudo docker <command>"
 else
     echo "✅ Docker is already installed"
+    DOCKER_USER=$USER
 fi
 
 # Install Docker Compose
 echo ""
 echo "🐳 Step 3/10: Installing Docker Compose..."
 USE_DOCKER_COMPOSE_PLUGIN=false
-if docker compose version &> /dev/null; then
+if docker compose version &> /dev/null 2>&1; then
     USE_DOCKER_COMPOSE_PLUGIN=true
     echo "✅ Docker Compose plugin found"
 elif command -v docker-compose &> /dev/null; then
@@ -89,7 +96,7 @@ else
     fi
 fi
 
-# Function to run docker compose commands
+# Function to run docker compose commands (handles both plugin and standalone)
 docker_compose() {
     if docker info &> /dev/null 2>&1; then
         if [ "$USE_DOCKER_COMPOSE_PLUGIN" = true ]; then
@@ -150,11 +157,19 @@ echo "🔍 Checking for port conflicts..."
 PORT_80_IN_USE=false
 PORT_8080_IN_USE=false
 
+# Check for port conflicts (Amazon Linux uses different tools)
 if command -v lsof &> /dev/null; then
-    if sudo lsof -i :80 &> /dev/null; then
+    if sudo lsof -i :80 &> /dev/null 2>&1; then
         PORT_80_IN_USE=true
     fi
-    if sudo lsof -i :8080 &> /dev/null; then
+    if sudo lsof -i :8080 &> /dev/null 2>&1; then
+        PORT_8080_IN_USE=true
+    fi
+elif command -v netstat &> /dev/null; then
+    if sudo netstat -tuln | grep -q ":80 " 2>/dev/null; then
+        PORT_80_IN_USE=true
+    fi
+    if sudo netstat -tuln | grep -q ":8080 " 2>/dev/null; then
         PORT_8080_IN_USE=true
     fi
 fi
@@ -162,11 +177,11 @@ fi
 if [ "$PORT_80_IN_USE" = true ] || [ "$PORT_8080_IN_USE" = true ]; then
     echo "⚠️  Ports 80 or 8080 are in use. Stopping common web servers..."
     
-    # Stop Apache
-    if systemctl is-active --quiet apache2 2>/dev/null || systemctl is-active --quiet httpd 2>/dev/null; then
-        echo "   Stopping Apache..."
-        sudo systemctl stop apache2 2>/dev/null || sudo systemctl stop httpd 2>/dev/null
-        sudo systemctl disable apache2 2>/dev/null || sudo systemctl disable httpd 2>/dev/null
+    # Stop Apache (httpd on Amazon Linux)
+    if systemctl is-active --quiet httpd 2>/dev/null || systemctl is-active --quiet apache2 2>/dev/null; then
+        echo "   Stopping Apache/httpd..."
+        sudo systemctl stop httpd 2>/dev/null || sudo systemctl stop apache2 2>/dev/null
+        sudo systemctl disable httpd 2>/dev/null || sudo systemctl disable apache2 2>/dev/null
     fi
     
     # Stop Nginx
@@ -266,6 +281,7 @@ docker_compose up --build -d || {
     echo "1. Check logs: docker_compose logs"
     echo "2. Check ports: sudo lsof -i :80 -i :8080"
     echo "3. Check Docker: sudo docker ps -a"
+    echo "4. Docker permission errors? Try: newgrp docker"
     exit 1
 }
 
@@ -352,7 +368,7 @@ echo ""
 echo "📝 Troubleshooting:"
 echo "   - Can't access? Check Security Group allows ports 80 and 8080"
 echo "   - Services not starting? Check: docker_compose logs"
-echo "   - Docker permission errors? Use: sudo docker <command>"
+echo "   - Docker permission errors? Use: newgrp docker (or sudo docker <command>)"
 echo ""
 echo "🎉 Your ecommerce platform is now deployed!"
 

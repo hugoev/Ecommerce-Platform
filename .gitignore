@@ -45,4 +45,4 @@ build/
 *.trace.db
 backend/data/*.db
 backend/data/*.mv.db
-backend/data/*.trace.db
+backend/data/*.trace.db*.pem
