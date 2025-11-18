@@ -352,57 +352,79 @@ docker_compose() {
 # Get EC2 public IP
 echo ""
 echo "📍 Step 4/10: Detecting EC2 IP address..."
-EC2_IP=$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
 
-# Validate IP address format
-if [ -z "$EC2_IP" ] || [ "$EC2_IP" = "localhost" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
-    echo "⚠️  Could not automatically detect EC2 IP address."
-    echo "   This might happen if you're not on EC2 or metadata service is unavailable."
-    
-    # Try alternative method - check if we can get instance ID first
-    INSTANCE_ID=$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null)
+# Try multiple methods to get EC2 IP
+EC2_IP=""
+
+# Method 1: Instance metadata service (most reliable)
+echo "   Trying instance metadata service..."
+EC2_IP=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+
+# Method 2: If metadata returns empty or invalid, try getting instance ID first
+if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+    echo "   Trying alternative metadata endpoints..."
+    INSTANCE_ID=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "")
     if [ -n "$INSTANCE_ID" ]; then
         echo "   Detected EC2 instance ID: $INSTANCE_ID"
-        echo "   Trying to get IP from instance metadata..."
-        EC2_IP=$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
-    fi
-    
-    # If still empty, ask user (but only if we're in an interactive shell)
-    if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
-        if [ -t 0 ]; then
-            # Interactive shell - prompt user
-            echo ""
-            echo "   Please enter your EC2 public IP address:"
-            read -p "   EC2 Public IP: " MANUAL_IP
-            while [ -z "$MANUAL_IP" ] || ! echo "$MANUAL_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; do
-                echo "   ❌ Invalid IP address format. Please enter a valid IP (e.g., 54.123.45.67)"
-                read -p "   EC2 Public IP: " MANUAL_IP
-            done
-            EC2_IP=$MANUAL_IP
-        else
-            # Non-interactive (piped script) - try to get from AWS CLI or fail
-            echo ""
-            echo "   ⚠️  Non-interactive mode detected. Trying alternative methods..."
-            # Try AWS CLI if available
-            if command -v aws &> /dev/null; then
-                EC2_IP=$(aws ec2 describe-instances --instance-ids $(curl -s http://169.254.169.254/latest/meta-data/instance-id) --query 'Reservations[0].Instances[0].PublicIpAddress' --output text 2>/dev/null || echo "")
-            fi
-            
-            # If still empty, fail with instructions
-            if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
-                echo "   ❌ Could not detect EC2 IP address automatically."
-                echo "   Please run the script interactively or set EC2_IP environment variable:"
-                echo "   EC2_IP=your-ip-here bash deploy-amazon-linux.sh"
-                echo "   OR find your IP in AWS Console: EC2 > Instances > Your Instance > Public IPv4 address"
-                exit 1
+        # Try public-ipv4 again
+        EC2_IP=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+        # If still empty, try public-hostname (sometimes works when public-ipv4 doesn't)
+        if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+            PUBLIC_HOSTNAME=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/public-hostname 2>/dev/null || echo "")
+            if [ -n "$PUBLIC_HOSTNAME" ] && echo "$PUBLIC_HOSTNAME" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+                EC2_IP=$PUBLIC_HOSTNAME
             fi
         fi
     fi
 fi
 
-# Final validation - don't proceed with empty IP
+# Method 3: Try AWS CLI if available
 if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
-    echo "❌ Invalid or empty EC2 IP address. Cannot proceed."
+    if command -v aws &> /dev/null; then
+        echo "   Trying AWS CLI..."
+        INSTANCE_ID=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "")
+        if [ -n "$INSTANCE_ID" ]; then
+            EC2_IP=$(aws ec2 describe-instances --instance-ids "$INSTANCE_ID" --query 'Reservations[0].Instances[0].PublicIpAddress' --output text 2>/dev/null || echo "")
+        fi
+    fi
+fi
+
+# Method 4: Check environment variable
+if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+    if [ -n "$EC2_IP" ] && echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+        echo "   Using EC2_IP from environment variable"
+    fi
+fi
+
+# If still empty, try to get from hostname or use placeholder
+if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+    # Check if we're in interactive mode
+    if [ -t 0 ]; then
+        # Interactive shell - prompt user
+        echo ""
+        echo "   ⚠️  Could not automatically detect EC2 IP address."
+        echo "   Please enter your EC2 public IP address:"
+        read -p "   EC2 Public IP: " MANUAL_IP
+        while [ -z "$MANUAL_IP" ] || ! echo "$MANUAL_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; do
+            echo "   ❌ Invalid IP address format. Please enter a valid IP (e.g., 54.123.45.67)"
+            read -p "   EC2 Public IP: " MANUAL_IP
+        done
+        EC2_IP=$MANUAL_IP
+    else
+        # Non-interactive mode - use placeholder and continue
+        # User can update .env file later if needed
+        echo "   ⚠️  Could not detect EC2 IP in non-interactive mode"
+        echo "   Using placeholder - you can update .env file after deployment"
+        echo "   To find your IP: AWS Console > EC2 > Instances > Your Instance > Public IPv4"
+        EC2_IP="YOUR-EC2-IP-HERE"
+        echo "   ⚠️  WARNING: VITE_API_BASE_URL will be set to http://YOUR-EC2-IP-HERE:8080"
+        echo "   You MUST update this in .env file after getting your actual IP!"
+    fi
+fi
+
+# Final validation
+if [ -z "$EC2_IP" ]; then
+    echo "❌ Could not determine EC2 IP address"
     exit 1
 fi
 
