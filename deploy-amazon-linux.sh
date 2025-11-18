@@ -359,9 +359,16 @@ echo "📍 Step 4/10: Detecting EC2 IP address..."
 # Try multiple methods to get EC2 IP
 EC2_IP=""
 
-# Method 1: Instance metadata service (most reliable)
-echo "   Trying instance metadata service..."
-EC2_IP=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+# Method 1: Instance metadata service (try IMDSv2 first, then IMDSv1)
+echo "   Trying instance metadata service (IMDSv2)..."
+TOKEN=$(curl -s --max-time 5 -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" 2>/dev/null || echo "")
+if [ -n "$TOKEN" ]; then
+    EC2_IP=$(curl -s --max-time 10 -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+else
+    # Fallback to IMDSv1
+    echo "   Trying IMDSv1 (legacy)..."
+    EC2_IP=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+fi
 
 # Method 2: If metadata returns empty or invalid, try getting instance ID first
 if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
