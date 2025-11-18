@@ -410,15 +410,16 @@ Before deploying, you need to create and configure an EC2 instance. Follow these
 #### 2. Instance Configuration
 
 **Instance Type:**
-- **Minimum (Free Tier)**: `t3.micro` (1 vCPU, 1 GB RAM) - *May experience slow builds*
-- **Recommended**: `t3.small` (2 vCPU, 2 GB RAM) - *Good balance of cost and performance*
-- **For Production**: `t3.medium` (2 vCPU, 4 GB RAM) or larger
+
+- **Recommended**: `t3.medium` (2 vCPU, 4 GB RAM)
 
 **AMI (Amazon Machine Image):**
+
 - Select **Amazon Linux 2023 AMI** (recommended)
 - Or **Ubuntu 22.04 LTS** (alternative)
 
 **Key Pair:**
+
 - Create a new key pair or select an existing one
 - **Important**: Download the `.pem` file and store it securely
 - You'll need this to SSH into your instance
@@ -429,11 +430,11 @@ Before deploying, you need to create and configure an EC2 instance. Follow these
 
 Create a security group with the following inbound rules:
 
-| Type | Protocol | Port Range | Source | Description |
-|------|----------|------------|--------|-------------|
-| SSH | TCP | 22 | My IP | Allow SSH access from your IP |
-| HTTP | TCP | 80 | 0.0.0.0/0 | Allow HTTP traffic (frontend) |
-| Custom TCP | TCP | 8080 | 0.0.0.0/0 | Allow API access (backend) |
+| Type       | Protocol | Port Range | Source    | Description                   |
+| ---------- | -------- | ---------- | --------- | ----------------------------- |
+| SSH        | TCP      | 22         | My IP     | Allow SSH access from your IP |
+| HTTP       | TCP      | 80         | 0.0.0.0/0 | Allow HTTP traffic (frontend) |
+| Custom TCP | TCP      | 8080       | 0.0.0.0/0 | Allow API access (backend)    |
 
 **Or use these AWS CLI commands:**
 
@@ -468,6 +469,7 @@ aws ec2 authorize-security-group-ingress \
 #### 4. Storage Configuration
 
 **Configure Storage:**
+
 - **Size**: 20 GB minimum (30 GB recommended for production)
 - **Volume Type**: `gp3` (recommended) or `gp2`
 - **Note**: AWS Free Tier includes 30 GB of EBS storage
@@ -475,6 +477,7 @@ aws ec2 authorize-security-group-ingress \
 #### 5. Advanced Settings (Optional but Recommended)
 
 **Enable IMDSv2 (Instance Metadata Service Version 2):**
+
 - Go to **Advanced details** → **Metadata accessible**
 - Set **Metadata version** to **V2 only (token required)**
 - This improves security by requiring a token for metadata access
@@ -504,22 +507,14 @@ ssh -i your-key.pem ubuntu@YOUR-EC2-IP
 ```
 
 **First-time SSH connection:**
+
 - You may need to set proper permissions: `chmod 400 your-key.pem`
 - If you see "Permission denied", ensure your security group allows SSH from your IP
 
 #### 7. Cost Estimation
 
-**Free Tier (t3.micro):**
-- Instance: Free for 750 hours/month (first 12 months)
-- Storage: Free for 30 GB/month (first 12 months)
-- **Total: ~$0/month** (within free tier limits)
+**t3.medium Instance:**
 
-**Recommended (t3.small):**
-- Instance: ~$0.0208/hour = ~$15/month (if running 24/7)
-- Storage: ~$2/month for 20 GB gp3
-- **Total: ~$17/month**
-
-**Production (t3.medium):**
 - Instance: ~$0.0416/hour = ~$30/month (if running 24/7)
 - Storage: ~$3/month for 30 GB gp3
 - **Total: ~$33/month**
