@@ -8,16 +8,22 @@ import { useUser } from "@/hooks/useUser";
 import { useOrders } from "@/hooks/useOrders";
 import { User, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
+import type { RootState } from "@/app/store";
+import { useNavigate } from "react-router-dom";
 
 export function ProfilePage() {
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const { profile, loading, error, fetchProfile, updateProfile, changePassword } = useUser();
-  const { orders } = useOrders();
+  const { orders, fetchOrders } = useOrders();
   const { showToast } = useToast();
   
-  // For demo purposes, using userId = 1 (you would get this from auth context)
-  const userId = 1;
+  // Get current user from auth state
+  const user = useSelector((state: RootState) => state.auth.user);
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const userId = user?.id;
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -32,8 +38,15 @@ export function ProfilePage() {
   });
 
   useEffect(() => {
-    fetchProfile(userId);
-  }, [fetchProfile, userId]);
+    if (isAuthenticated && userId) {
+      fetchProfile(userId);
+      fetchOrders(userId);
+    } else if (!isAuthenticated) {
+      // Redirect to login if not authenticated
+      navigate('/login');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, isAuthenticated]);
 
   useEffect(() => {
     if (profile) {
@@ -91,6 +104,17 @@ export function ProfilePage() {
     }
   };
 
+  if (!isAuthenticated || !userId) {
+    return (
+      <div className="container py-8 px-4 max-w-4xl mx-auto">
+        <div className="text-center py-12">
+          <p className="text-text-muted mb-4">Please log in to view your profile.</p>
+          <Button onClick={() => navigate('/login')}>Go to Login</Button>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="container py-8 px-4 max-w-4xl mx-auto">
@@ -107,7 +131,7 @@ export function ProfilePage() {
       <div className="container py-8 px-4 max-w-4xl mx-auto">
         <div className="text-center py-12">
           <p className="text-red-600 mb-4">Error: {error || 'Profile not found'}</p>
-          <Button onClick={() => fetchProfile(userId)}>Try Again</Button>
+          <Button onClick={() => userId && fetchProfile(userId)}>Try Again</Button>
         </div>
       </div>
     );
@@ -200,21 +224,38 @@ export function ProfilePage() {
             <CardContent className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-text-muted">Orders Placed</span>
-                <span className="font-semibold text-foreground">{orders.length}</span>
+                <span className="font-semibold text-foreground">
+                  {orders && Array.isArray(orders) ? orders.length : 0}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-text-muted">Total Spent</span>
                 <span className="font-semibold text-foreground">
-                  ${orders.reduce((sum, order) => sum + order.total, 0).toFixed(2)}
+                  ${orders && Array.isArray(orders) 
+                    ? orders.reduce((sum, order) => sum + (order.total || 0), 0).toFixed(2)
+                    : '0.00'}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-text-muted">Member Since</span>
                 <span className="font-semibold text-foreground">
-                  {new Date(profile.createdAt).toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'short' 
-                  })}
+                  {profile.createdAt 
+                    ? (() => {
+                        try {
+                          const date = new Date(profile.createdAt);
+                          if (isNaN(date.getTime())) {
+                            return 'N/A';
+                          }
+                          return date.toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short',
+                            day: 'numeric'
+                          });
+                        } catch (e) {
+                          return 'N/A';
+                        }
+                      })()
+                    : 'N/A'}
                 </span>
               </div>
             </CardContent>
