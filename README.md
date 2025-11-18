@@ -410,15 +410,6 @@ ssh -i your-key.pem ec2-user@your-ec2-ip
 curl -fsSL https://raw.githubusercontent.com/hugoev/Ecommerce-Platform/main/deploy-amazon-linux.sh | bash
 ```
 
-**For Ubuntu/Debian instances:**
-
-```bash
-# SSH into your EC2 instance
-ssh -i your-key.pem ubuntu@your-ec2-ip
-
-# Run the complete deployment script (handles everything automatically)
-curl -fsSL https://raw.githubusercontent.com/hugoev/Ecommerce-Platform/main/deploy-complete.sh | bash
-```
 
 **What the script does:**
 
@@ -442,8 +433,6 @@ curl -fsSL https://raw.githubusercontent.com/hugoev/Ecommerce-Platform/main/depl
 - API Docs: `http://your-ec2-ip:8080/swagger-ui.html`
 
 ### Manual EC2 Deployment
-
-If you prefer manual setup, see `EC2_DEPLOYMENT_README.md` or `DEPLOY_TO_EC2.md` for detailed instructions.
 
 Quick manual deploy:
 
