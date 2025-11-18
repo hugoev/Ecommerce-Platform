@@ -21,9 +21,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class RateLimitingFilter implements Filter {
 
     // Rate limit configuration
-    private static final int MAX_REQUESTS_PER_MINUTE = 60; // 60 requests per minute per IP
-    private static final int MAX_REQUESTS_PER_HOUR = 1000; // 1000 requests per hour per IP
-    private static final int BLOCK_DURATION_MINUTES = 60; // Block for 60 minutes if exceeded
+    private static final int MAX_REQUESTS_PER_MINUTE = 120; // 120 requests per minute per IP (more lenient)
+    private static final int MAX_REQUESTS_PER_HOUR = 5000; // 5000 requests per hour per IP (more lenient)
+    private static final int BLOCK_DURATION_MINUTES = 5; // Block for 5 minutes if exceeded (shorter block)
 
     // Store request counts per IP
     private final Map<String, RequestCounter> requestCounts = new ConcurrentHashMap<>();
@@ -38,6 +38,14 @@ public class RateLimitingFilter implements Filter {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
         
+        String requestPath = httpRequest.getRequestURI();
+        
+        // Skip rate limiting for certain endpoints (static resources, health checks, etc.)
+        if (shouldSkipRateLimit(requestPath)) {
+            chain.doFilter(request, response);
+            return;
+        }
+        
         String clientIP = getClientIP(httpRequest);
         
         // Clean up old entries periodically
@@ -49,6 +57,9 @@ public class RateLimitingFilter implements Filter {
             if (LocalDateTime.now().isBefore(unblockTime)) {
                 httpResponse.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 httpResponse.setContentType("application/json");
+                httpResponse.setHeader("Retry-After", String.valueOf(
+                    java.time.Duration.between(LocalDateTime.now(), unblockTime).getSeconds()
+                ));
                 httpResponse.getWriter().write(
                     "{\"error\":\"Rate limit exceeded. Please try again later.\",\"retryAfter\":\"" +
                     unblockTime + "\"}"
@@ -117,6 +128,23 @@ public class RateLimitingFilter implements Filter {
         requestCounts.remove(ip); // Clear counter when blocking
     }
 
+    private boolean shouldSkipRateLimit(String requestPath) {
+        // Skip rate limiting for:
+        // - Static resources (images, CSS, JS)
+        // - Health check endpoints
+        // - WebSocket connections
+        if (requestPath == null) {
+            return false;
+        }
+        
+        return requestPath.startsWith("/images/") ||
+               requestPath.startsWith("/css/") ||
+               requestPath.startsWith("/js/") ||
+               requestPath.startsWith("/static/") ||
+               requestPath.equals("/health") ||
+               requestPath.equals("/actuator/health");
+    }
+
     private void cleanupOldEntries() {
         // Clean up blocked IPs that have expired
         blockedIPs.entrySet().removeIf(entry -> 
@@ -133,6 +161,22 @@ public class RateLimitingFilter implements Filter {
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
         // No initialization needed
+    }
+
+    /**
+     * Clear rate limit for a specific IP (useful for testing or manual unblocking)
+     */
+    public void clearRateLimit(String ip) {
+        blockedIPs.remove(ip);
+        requestCounts.remove(ip);
+    }
+    
+    /**
+     * Clear all rate limits (useful for testing or reset)
+     */
+    public void clearAllRateLimits() {
+        blockedIPs.clear();
+        requestCounts.clear();
     }
 
     @Override
