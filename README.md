@@ -627,9 +627,9 @@ docker compose logs frontend
 - `backend/README.md` - Backend architecture and best practices
 - `frontend/README.md` - Frontend structure and components
 - `FRONTEND_API_GUIDE.md` - Detailed API integration guide
-- `EC2_DEPLOYMENT_README.md` - AWS deployment guide (detailed)
-- `DEPLOY_TO_EC2.md` - Quick EC2 deployment guide
-- `deploy-complete.sh` - **Complete automated deployment script** (recommended)
+- `deploy-amazon-linux.sh` - **Automated deployment script for Amazon Linux 2023** (recommended)
+- `rebuild-service.sh` - Helper script to rebuild individual services
+- `rebuild-backend.sh` - Helper script to rebuild only the backend service
 - `INFO.md` - Original project requirements
 
 ## 👥 Team Members

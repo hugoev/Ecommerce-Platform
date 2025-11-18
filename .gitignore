@@ -45,4 +45,10 @@ build/
 *.trace.db
 backend/data/*.db
 backend/data/*.mv.db
-backend/data/*.trace.db*.pem
+backend/data/*.trace.db
+
+### Security keys ###
+*.pem
+*.key
+*.p12
+*.jks
