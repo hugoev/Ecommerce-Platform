@@ -554,7 +554,7 @@ Quick manual deploy:
 
 ```bash
 # SSH into EC2 instance
-ssh -i your-key.pem ubuntu@your-ec2-ip
+ssh -i your-key.pem ec2-user@your-ec2-ip
 
 # Clone and deploy
 git clone https://github.com/hugoev/Ecommerce-Platform.git
