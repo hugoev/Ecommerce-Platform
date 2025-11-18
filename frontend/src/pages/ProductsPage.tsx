@@ -188,6 +188,15 @@ export function ProductsPage() {
                     src={product.imageUrl || `https://via.placeholder.com/280x280?text=${product.title.replace(/\s+/g, '+')}`}
                     alt={product.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                    onError={(e) => {
+                      // Prevent infinite loop - if already using data URL or placeholder, stop
+                      const target = e.target as HTMLImageElement;
+                      if (target.src.startsWith('data:') || target.src.includes('via.placeholder.com')) {
+                        return;
+                      }
+                      // Use data URL placeholder as fallback
+                      target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjgwIiBoZWlnaHQ9IjI4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjgwIiBoZWlnaHQ9IjI4MCIgZmlsbD0iI2U1ZTdlOSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Y2EzYWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';
+                    }}
                   />
                 </div>
               </CardHeader>
