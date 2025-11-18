@@ -389,9 +389,10 @@ if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-
     fi
 fi
 
-# Method 4: Check environment variable
+# Method 4: Check environment variable (if set before script runs)
 if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
-    if [ -n "$EC2_IP" ] && echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+    if [ -n "${EC2_IP_ENV:-}" ] && echo "${EC2_IP_ENV}" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+        EC2_IP="${EC2_IP_ENV}"
         echo "   Using EC2_IP from environment variable"
     fi
 fi
@@ -411,18 +412,35 @@ if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-
         done
         EC2_IP=$MANUAL_IP
     else
-        # Non-interactive mode - use placeholder and continue
-        # User can update .env file later if needed
-        echo "   ⚠️  Could not detect EC2 IP in non-interactive mode"
-        echo "   Using placeholder - you can update .env file after deployment"
-        echo "   To find your IP: AWS Console > EC2 > Instances > Your Instance > Public IPv4"
-        EC2_IP="YOUR-EC2-IP-HERE"
-        echo "   ⚠️  WARNING: VITE_API_BASE_URL will be set to http://YOUR-EC2-IP-HERE:8080"
-        echo "   You MUST update this in .env file after getting your actual IP!"
+        # Non-interactive mode - try one more time with longer timeout, then use placeholder
+        echo "   ⚠️  Non-interactive mode - trying one more time with extended timeout..."
+        sleep 2
+        EC2_IP=$(curl -s --max-time 15 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+        
+        if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+            # Last resort: try to extract from hostname if it contains IP
+            HOSTNAME_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "")
+            if [ -n "$HOSTNAME_IP" ] && echo "$HOSTNAME_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+                # This is likely private IP, but let's check if it's public
+                if ! echo "$HOSTNAME_IP" | grep -qE '^10\.|^172\.(1[6-9]|2[0-9]|3[01])\.|^192\.168\.'; then
+                    EC2_IP=$HOSTNAME_IP
+                    echo "   Using IP from hostname: $EC2_IP"
+                fi
+            fi
+        fi
+        
+        # If still empty, continue with placeholder (deployment can proceed, user updates .env later)
+        if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+            echo "   ⚠️  Could not detect EC2 IP automatically"
+            echo "   Continuing with placeholder - deployment will proceed"
+            echo "   After deployment, update .env file with your actual IP from AWS Console"
+            EC2_IP="YOUR-EC2-IP-HERE"
+            echo "   ⚠️  NOTE: You'll need to update VITE_API_BASE_URL in .env after getting your IP"
+        fi
     fi
 fi
 
-# Final validation
+# Final validation - only exit if completely empty (not even placeholder)
 if [ -z "$EC2_IP" ]; then
     echo "❌ Could not determine EC2 IP address"
     exit 1
@@ -696,10 +714,41 @@ echo "================================================"
 echo "✅ Deployment Complete!"
 echo "================================================"
 echo ""
+
+# Try to get actual IP one more time if we used placeholder
+if [ "$EC2_IP" = "YOUR-EC2-IP-HERE" ]; then
+    echo "⚠️  IP Detection Issue:"
+    echo "   The script couldn't detect your EC2 IP automatically."
+    echo "   Getting your IP now..."
+    ACTUAL_IP=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+    if [ -n "$ACTUAL_IP" ] && echo "$ACTUAL_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+        EC2_IP=$ACTUAL_IP
+        echo "   ✅ Found IP: $EC2_IP"
+        echo "   Updating .env file..."
+        sed -i "s|VITE_API_BASE_URL=http://YOUR-EC2-IP-HERE:8080|VITE_API_BASE_URL=http://$EC2_IP:8080|" .env
+        # Rebuild frontend with correct IP
+        echo "   Rebuilding frontend with correct IP..."
+        docker_compose up --build -d frontend 2>/dev/null || true
+    else
+        echo "   ⚠️  Still couldn't detect IP automatically"
+        echo "   Please update .env file manually:"
+        echo "   1. Get your IP from AWS Console: EC2 > Instances > Your Instance > Public IPv4"
+        echo "   2. Edit .env file: nano .env"
+        echo "   3. Update: VITE_API_BASE_URL=http://YOUR-ACTUAL-IP:8080"
+        echo "   4. Rebuild frontend: docker compose up --build -d frontend"
+    fi
+fi
+
+echo ""
 echo "🌐 Application URLs:"
-echo "   Frontend:  http://$EC2_IP"
-echo "   Backend:   http://$EC2_IP:8080"
-echo "   API Docs:  http://$EC2_IP:8080/swagger-ui.html"
+if [ "$EC2_IP" != "YOUR-EC2-IP-HERE" ]; then
+    echo "   Frontend:  http://$EC2_IP"
+    echo "   Backend:   http://$EC2_IP:8080"
+    echo "   API Docs:  http://$EC2_IP:8080/swagger-ui.html"
+else
+    echo "   ⚠️  IP not detected - URLs unavailable"
+    echo "   Get your IP from AWS Console and update .env file"
+fi
 echo ""
 echo "🔐 Default Login Credentials:"
 echo "   Admin: admin / admin123"
