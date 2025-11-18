@@ -400,120 +400,27 @@ npm run lint
 
 ### EC2 Instance Setup
 
-Before deploying, you need to create and configure an EC2 instance. Follow these steps:
+1. **Launch Instance** → AWS Console → EC2 → Launch Instance
+2. **Instance Type**: `t3.medium` (2 vCPU, 4 GB RAM)
+3. **AMI**: Amazon Linux 2023 AMI
+4. **Key Pair**: Create/download `.pem` file for SSH access
+5. **Security Group** - Add these inbound rules:
 
-#### 1. Launch EC2 Instance
+   | Type       | Port | Source    |
+   | ---------- | ---- | --------- |
+   | SSH        | 22   | My IP     |
+   | HTTP       | 80   | 0.0.0.0/0 |
+   | Custom TCP | 8080 | 0.0.0.0/0 |
 
-1. **Go to AWS Console** → EC2 → Launch Instance
-2. **Name your instance** (e.g., "Ecommerce-Platform")
+6. **Storage**: 30 GB gp3
+7. **Launch** and note your **Public IPv4 address**
+8. **Connect via SSH:**
 
-#### 2. Instance Configuration
+   ```bash
+   ssh -i your-key.pem ec2-user@YOUR-EC2-IP
+   ```
 
-**Instance Type:**
-
-- **Recommended**: `t3.medium` (2 vCPU, 4 GB RAM)
-
-**AMI (Amazon Machine Image):**
-
-- Select **Amazon Linux 2023 AMI**
-
-**Key Pair:**
-
-- Create a new key pair or select an existing one
-- **Important**: Download the `.pem` file and store it securely
-- You'll need this to SSH into your instance
-
-#### 3. Network Settings
-
-**Security Group Configuration:**
-
-Create a security group with the following inbound rules:
-
-| Type       | Protocol | Port Range | Source    | Description                   |
-| ---------- | -------- | ---------- | --------- | ----------------------------- |
-| SSH        | TCP      | 22         | My IP     | Allow SSH access from your IP |
-| HTTP       | TCP      | 80         | 0.0.0.0/0 | Allow HTTP traffic (frontend) |
-| Custom TCP | TCP      | 8080       | 0.0.0.0/0 | Allow API access (backend)    |
-
-**Or use these AWS CLI commands:**
-
-```bash
-# Create security group
-aws ec2 create-security-group \
-  --group-name ecommerce-platform-sg \
-  --description "Security group for Ecommerce Platform"
-
-# Add SSH rule (replace YOUR_IP with your actual IP)
-aws ec2 authorize-security-group-ingress \
-  --group-name ecommerce-platform-sg \
-  --protocol tcp \
-  --port 22 \
-  --cidr YOUR_IP/32
-
-# Add HTTP rule
-aws ec2 authorize-security-group-ingress \
-  --group-name ecommerce-platform-sg \
-  --protocol tcp \
-  --port 80 \
-  --cidr 0.0.0.0/0
-
-# Add API port rule
-aws ec2 authorize-security-group-ingress \
-  --group-name ecommerce-platform-sg \
-  --protocol tcp \
-  --port 8080 \
-  --cidr 0.0.0.0/0
-```
-
-#### 4. Storage Configuration
-
-**Configure Storage:**
-
-- **Size**: 20 GB minimum (30 GB recommended for production)
-- **Volume Type**: `gp3` (recommended) or `gp2`
-- **Note**: AWS Free Tier includes 30 GB of EBS storage
-
-#### 5. Advanced Settings (Optional but Recommended)
-
-**Enable IMDSv2 (Instance Metadata Service Version 2):**
-
-- Go to **Advanced details** → **Metadata accessible**
-- Set **Metadata version** to **V2 only (token required)**
-- This improves security by requiring a token for metadata access
-
-**User Data (Optional - for automatic setup):**
-You can add this to automatically run the deployment script on first boot:
-
-```bash
-#!/bin/bash
-cd /home/ec2-user
-curl -fsSL https://raw.githubusercontent.com/hugoev/Ecommerce-Platform/main/deploy-amazon-linux.sh | bash
-```
-
-#### 6. Launch and Connect
-
-1. Click **Launch Instance**
-2. Wait for instance to be in **Running** state
-3. Note your **Public IPv4 address**
-4. **Connect via SSH:**
-
-```bash
-# Connect to your instance
-ssh -i your-key.pem ec2-user@YOUR-EC2-IP
-```
-
-**First-time SSH connection:**
-
-- You may need to set proper permissions: `chmod 400 your-key.pem`
-- If you see "Permission denied", ensure your security group allows SSH from your IP
-
-#### 7. Cost Estimation
-
-**t3.medium Instance:**
-
-- Instance: ~$0.0416/hour = ~$30/month (if running 24/7)
-- Storage: ~$3/month for 30 GB gp3
-- **Total: ~$33/month**
+**Cost**: ~$33/month (t3.medium + 30 GB storage)
 
 ### Deploy to EC2 (Recommended - One Command)
 
