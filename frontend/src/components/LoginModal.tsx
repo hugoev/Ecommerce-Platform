@@ -114,12 +114,12 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess, message }: LoginMo
                   size="sm"
                   className="text-xs"
                   onClick={() => {
-                    setCredentials({ username: 'john_doe', password: 'password123' });
+                    setCredentials({ username: 'sarah_chen', password: 'password123' });
                   }}
                 >
                   Use User
                 </Button>
-                <span className="text-xs text-text-muted">john_doe / password123</span>
+                <span className="text-xs text-text-muted">sarah_chen / password123</span>
               </div>
             </div>
           </div>
