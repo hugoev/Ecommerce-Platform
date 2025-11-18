@@ -195,27 +195,34 @@ fi
 echo ""
 echo "🐳 Step 3a/10: Installing/verifying Docker Buildx..."
 BUILDX_INSTALLED=false
+BUILDX_WORKING=false
+
+# Check if buildx is already working
 if docker buildx version &> /dev/null 2>&1; then
     BUILDX_VER=$(docker buildx version 2>&1 | head -1)
     # Check if version is >= 0.17
     if echo "$BUILDX_VER" | grep -qE "v0\.(1[7-9]|[2-9][0-9])|v[1-9]"; then
         BUILDX_INSTALLED=true
+        BUILDX_WORKING=true
         echo "✅ Docker Buildx already installed: $BUILDX_VER"
     fi
 elif sudo docker buildx version &> /dev/null 2>&1; then
     BUILDX_VER=$(sudo docker buildx version 2>&1 | head -1)
     if echo "$BUILDX_VER" | grep -qE "v0\.(1[7-9]|[2-9][0-9])|v[1-9]"; then
         BUILDX_INSTALLED=true
-        echo "✅ Docker Buildx already installed: $BUILDX_VER"
+        BUILDX_WORKING=true
+        echo "✅ Docker Buildx already installed (requires sudo): $BUILDX_VER"
     fi
 fi
 
-if [ "$BUILDX_INSTALLED" = false ]; then
+if [ "$BUILDX_WORKING" = false ]; then
     echo "📥 Installing Docker Buildx..."
     
     # Try installing from package first (easiest)
     if sudo yum install -y docker-buildx-plugin 2>/dev/null; then
         echo "✅ Docker Buildx installed from package"
+        sudo systemctl restart docker 2>/dev/null || true
+        sleep 2
     else
         # Fallback: Install manually
         echo "   Installing Docker Buildx manually..."
@@ -224,89 +231,62 @@ if [ "$BUILDX_INSTALLED" = false ]; then
         mkdir -p ~/.docker/cli-plugins
         sudo mkdir -p /usr/local/lib/docker/cli-plugins
         
-        # Download latest buildx (use a known working version)
+        # Download latest buildx
         ARCH=$(uname -m)
         [ "$ARCH" = "x86_64" ] && ARCH="amd64" || ARCH="arm64"
         
         BUILDX_URL="https://github.com/docker/buildx/releases/latest/download/buildx-linux-${ARCH}"
         
         # Install for current user
+        echo "   Downloading Buildx for current user..."
         curl -L "$BUILDX_URL" -o ~/.docker/cli-plugins/docker-buildx 2>/dev/null
         if [ $? -eq 0 ] && [ -f ~/.docker/cli-plugins/docker-buildx ]; then
             chmod +x ~/.docker/cli-plugins/docker-buildx
-            echo "   Installed for current user"
+            echo "   ✅ Installed for current user"
         fi
         
         # Install system-wide (requires sudo)
+        echo "   Downloading Buildx system-wide..."
         sudo curl -L "$BUILDX_URL" -o /usr/local/lib/docker/cli-plugins/docker-buildx 2>/dev/null
         if [ $? -eq 0 ] && [ -f /usr/local/lib/docker/cli-plugins/docker-buildx ]; then
             sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
-            echo "   Installed system-wide"
+            echo "   ✅ Installed system-wide"
         fi
     fi
     
-    # Verify installation - check if files exist first
-    BUILDX_FOUND=false
-    BUILDX_USER_FILE=false
-    BUILDX_SYSTEM_FILE=false
+    # Restart Docker to pick up the plugin
+    echo "   Restarting Docker to pick up Buildx plugin..."
+    sudo systemctl restart docker 2>/dev/null || true
+    sleep 3
     
-    if [ -f ~/.docker/cli-plugins/docker-buildx ] && [ -x ~/.docker/cli-plugins/docker-buildx ]; then
-        BUILDX_FOUND=true
-        BUILDX_USER_FILE=true
-        echo "   ✅ Buildx binary found in user directory"
-    fi
-    if [ -f /usr/local/lib/docker/cli-plugins/docker-buildx ] && [ -x /usr/local/lib/docker/cli-plugins/docker-buildx ]; then
-        BUILDX_FOUND=true
-        BUILDX_SYSTEM_FILE=true
-        echo "   ✅ Buildx binary found system-wide"
-    fi
-    
-    # If files exist, try to make them work - don't exit on failure
-    if [ "$BUILDX_FOUND" = true ]; then
-        # Try to restart Docker to pick up the plugin
-        echo "   Restarting Docker to pick up Buildx plugin..."
-        sudo systemctl restart docker 2>/dev/null || true
-        sleep 2
-        
-        # Try without sudo first
-        if docker buildx version &> /dev/null 2>&1; then
-            BUILDX_VER=$(docker buildx version 2>&1 | head -1)
-            echo "✅ Docker Buildx installed and working: $BUILDX_VER"
-        elif sudo docker buildx version &> /dev/null 2>&1; then
-            BUILDX_VER=$(sudo docker buildx version 2>&1 | head -1)
-            echo "✅ Docker Buildx installed (requires sudo): $BUILDX_VER"
-        else
-            # File exists but Docker still can't find it - try creating builder
-            echo "   Attempting to initialize Buildx..."
-            docker buildx create --name builder --use &> /dev/null 2>&1 || \
-            sudo docker buildx create --name builder --use &> /dev/null 2>&1 || true
-            
-            # If files exist, we'll continue anyway - docker compose might work
-            if [ "$BUILDX_USER_FILE" = true ] || [ "$BUILDX_SYSTEM_FILE" = true ]; then
-                echo "✅ Buildx binary installed - continuing (may work during build)"
-                echo "   Note: If build fails, the script will use 'sudo docker compose' automatically"
-            fi
-        fi
+    # Verify installation - try multiple methods
+    if docker buildx version &> /dev/null 2>&1; then
+        BUILDX_VER=$(docker buildx version 2>&1 | head -1)
+        echo "✅ Docker Buildx installed and working: $BUILDX_VER"
+        BUILDX_WORKING=true
+    elif sudo docker buildx version &> /dev/null 2>&1; then
+        BUILDX_VER=$(sudo docker buildx version 2>&1 | head -1)
+        echo "✅ Docker Buildx installed (requires sudo): $BUILDX_VER"
+        BUILDX_WORKING=true
     else
-        # Files don't exist - this is a real failure
-        echo "❌ Docker Buildx installation failed - binary not found"
-        echo "   Retrying installation..."
-        
-        # One more attempt with explicit path
-        mkdir -p ~/.docker/cli-plugins
-        ARCH=$(uname -m)
-        [ "$ARCH" = "x86_64" ] && ARCH="amd64" || ARCH="arm64"
-        curl -L "https://github.com/docker/buildx/releases/latest/download/buildx-linux-${ARCH}" -o ~/.docker/cli-plugins/docker-buildx
-        chmod +x ~/.docker/cli-plugins/docker-buildx
-        
-        if [ -f ~/.docker/cli-plugins/docker-buildx ] && [ -x ~/.docker/cli-plugins/docker-buildx ]; then
-            echo "✅ Buildx installed on retry - continuing"
-            sudo systemctl restart docker 2>/dev/null || true
-            sleep 2
+        # Try to create builder instance to verify it works
+        echo "   Attempting to initialize Buildx builder..."
+        if docker buildx create --name builder --use --bootstrap &> /dev/null 2>&1; then
+            echo "✅ Docker Buildx is working (builder created)"
+            BUILDX_WORKING=true
+        elif sudo docker buildx create --name builder --use --bootstrap &> /dev/null 2>&1; then
+            echo "✅ Docker Buildx is working with sudo (builder created)"
+            BUILDX_WORKING=true
         else
-            echo "❌ Buildx installation failed completely"
-            echo "   Continuing anyway - docker compose may work without explicit buildx"
-            echo "   If build fails, the error will be shown with troubleshooting steps"
+            # Check if files exist - if they do, continue anyway
+            if [ -f ~/.docker/cli-plugins/docker-buildx ] && [ -x ~/.docker/cli-plugins/docker-buildx ] || \
+               [ -f /usr/local/lib/docker/cli-plugins/docker-buildx ] && [ -x /usr/local/lib/docker/cli-plugins/docker-buildx ]; then
+                echo "✅ Buildx binary installed - continuing (will use sudo docker if needed)"
+                echo "   Note: Script will automatically use 'sudo docker compose' if buildx issues occur"
+            else
+                echo "⚠️  Buildx installation had issues, but continuing..."
+                echo "   Script will attempt to work around this automatically"
+            fi
         fi
     fi
 fi
