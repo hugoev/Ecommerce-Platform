@@ -359,30 +359,64 @@ echo "📍 Step 4/10: Detecting EC2 IP address..."
 # Try multiple methods to get EC2 IP
 EC2_IP=""
 
-# Method 1: Instance metadata service (try IMDSv2 first, then IMDSv1)
+# Method 1: Instance metadata service (IMDSv2 - required on newer instances)
 echo "   Trying instance metadata service (IMDSv2)..."
+# Get session token first (required for IMDSv2)
 TOKEN=$(curl -s --max-time 5 -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" 2>/dev/null || echo "")
+
 if [ -n "$TOKEN" ]; then
+    # Use token to get public IP
     EC2_IP=$(curl -s --max-time 10 -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+    if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+        echo "   IMDSv2 token obtained but IP not found, trying public-hostname..."
+        PUBLIC_HOSTNAME=$(curl -s --max-time 10 -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-hostname 2>/dev/null || echo "")
+        if [ -n "$PUBLIC_HOSTNAME" ] && echo "$PUBLIC_HOSTNAME" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+            EC2_IP=$PUBLIC_HOSTNAME
+        fi
+    fi
 else
-    # Fallback to IMDSv1
-    echo "   Trying IMDSv1 (legacy)..."
+    # If token request failed, try IMDSv1 as fallback (only works if IMDSv2 is not required)
+    echo "   IMDSv2 token request failed, trying IMDSv1 (legacy fallback)..."
     EC2_IP=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+    if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+        echo "   ⚠️  IMDSv1 also failed - IMDSv2 may be required on this instance"
+    fi
 fi
 
-# Method 2: If metadata returns empty or invalid, try getting instance ID first
+# Method 2: If metadata returns empty or invalid, try getting instance ID first (using token if available)
 if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
     echo "   Trying alternative metadata endpoints..."
-    INSTANCE_ID=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "")
+    # Get token if we don't have one yet
+    if [ -z "$TOKEN" ]; then
+        TOKEN=$(curl -s --max-time 5 -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" 2>/dev/null || echo "")
+    fi
+    
+    if [ -n "$TOKEN" ]; then
+        INSTANCE_ID=$(curl -s --max-time 10 -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "")
+    else
+        INSTANCE_ID=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "")
+    fi
+    
     if [ -n "$INSTANCE_ID" ]; then
         echo "   Detected EC2 instance ID: $INSTANCE_ID"
-        # Try public-ipv4 again
-        EC2_IP=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
-        # If still empty, try public-hostname (sometimes works when public-ipv4 doesn't)
-        if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
-            PUBLIC_HOSTNAME=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/public-hostname 2>/dev/null || echo "")
-            if [ -n "$PUBLIC_HOSTNAME" ] && echo "$PUBLIC_HOSTNAME" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
-                EC2_IP=$PUBLIC_HOSTNAME
+        # Try public-ipv4 again with token
+        if [ -n "$TOKEN" ]; then
+            EC2_IP=$(curl -s --max-time 10 -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+            # If still empty, try public-hostname
+            if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+                PUBLIC_HOSTNAME=$(curl -s --max-time 10 -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-hostname 2>/dev/null || echo "")
+                if [ -n "$PUBLIC_HOSTNAME" ] && echo "$PUBLIC_HOSTNAME" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+                    EC2_IP=$PUBLIC_HOSTNAME
+                fi
+            fi
+        else
+            # Fallback to IMDSv1
+            EC2_IP=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+            if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+                PUBLIC_HOSTNAME=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/public-hostname 2>/dev/null || echo "")
+                if [ -n "$PUBLIC_HOSTNAME" ] && echo "$PUBLIC_HOSTNAME" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+                    EC2_IP=$PUBLIC_HOSTNAME
+                fi
             fi
         fi
     fi
@@ -392,7 +426,17 @@ fi
 if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
     if command -v aws &> /dev/null; then
         echo "   Trying AWS CLI..."
-        INSTANCE_ID=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "")
+        # Get instance ID using token if available
+        if [ -z "$TOKEN" ]; then
+            TOKEN=$(curl -s --max-time 5 -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" 2>/dev/null || echo "")
+        fi
+        
+        if [ -n "$TOKEN" ]; then
+            INSTANCE_ID=$(curl -s --max-time 10 -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "")
+        else
+            INSTANCE_ID=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "")
+        fi
+        
         if [ -n "$INSTANCE_ID" ]; then
             EC2_IP=$(aws ec2 describe-instances --instance-ids "$INSTANCE_ID" --query 'Reservations[0].Instances[0].PublicIpAddress' --output text 2>/dev/null || echo "")
         fi
@@ -422,10 +466,16 @@ if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-
         done
         EC2_IP=$MANUAL_IP
     else
-        # Non-interactive mode - try one more time with longer timeout, then use placeholder
-        echo "   ⚠️  Non-interactive mode - trying one more time with extended timeout..."
+        # Non-interactive mode - try one more time with IMDSv2, then use placeholder
+        echo "   ⚠️  Non-interactive mode - trying IMDSv2 one more time..."
         sleep 2
-        EC2_IP=$(curl -s --max-time 15 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+        # Get token for IMDSv2
+        TOKEN=$(curl -s --max-time 5 -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" 2>/dev/null || echo "")
+        if [ -n "$TOKEN" ]; then
+            EC2_IP=$(curl -s --max-time 15 -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+        else
+            EC2_IP=$(curl -s --max-time 15 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+        fi
         
         if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
             # Last resort: try to extract from hostname if it contains IP
