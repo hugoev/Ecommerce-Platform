@@ -942,27 +942,118 @@ echo "✅ Deployment Complete!"
 echo "================================================"
 echo ""
 
-# Try to get actual IP one more time if we used placeholder
-if [ "$EC2_IP" = "YOUR-EC2-IP-HERE" ]; then
+# Try to get actual IP one more time if we used placeholder - use all available methods
+if [ "$EC2_IP" = "YOUR-EC2-IP-HERE" ] || [ -z "$EC2_IP" ]; then
     echo "⚠️  IP Detection Issue:"
     echo "   The script couldn't detect your EC2 IP automatically."
-    echo "   Getting your IP now..."
-    ACTUAL_IP=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+    echo "   Trying all available methods now..."
+    
+    ACTUAL_IP=""
+    
+    # Method 1: Try IMDSv2 (token-based, required on newer instances)
+    echo "   Trying IMDSv2 (token-based)..."
+    TOKEN=$(curl -s --max-time 5 -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" 2>/dev/null || echo "")
+    if [ -n "$TOKEN" ]; then
+        ACTUAL_IP=$(curl -s --max-time 10 -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+    fi
+    
+    # Method 2: Try IMDSv1 (legacy, if IMDSv2 failed)
+    if [ -z "$ACTUAL_IP" ] || ! echo "$ACTUAL_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+        echo "   Trying IMDSv1 (legacy)..."
+        ACTUAL_IP=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+    fi
+    
+    # Method 3: Try public-hostname
+    if [ -z "$ACTUAL_IP" ] || ! echo "$ACTUAL_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+        echo "   Trying public-hostname..."
+        if [ -n "$TOKEN" ]; then
+            PUBLIC_HOSTNAME=$(curl -s --max-time 10 -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-hostname 2>/dev/null || echo "")
+        else
+            PUBLIC_HOSTNAME=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/public-hostname 2>/dev/null || echo "")
+        fi
+        if [ -n "$PUBLIC_HOSTNAME" ] && echo "$PUBLIC_HOSTNAME" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+            ACTUAL_IP=$PUBLIC_HOSTNAME
+        fi
+    fi
+    
+    # Method 4: Try AWS CLI
+    if [ -z "$ACTUAL_IP" ] || ! echo "$ACTUAL_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+        if command -v aws &> /dev/null; then
+            echo "   Trying AWS CLI..."
+            INSTANCE_ID=$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo "")
+            if [ -n "$INSTANCE_ID" ]; then
+                ACTUAL_IP=$(aws ec2 describe-instances --instance-ids "$INSTANCE_ID" --query 'Reservations[0].Instances[0].PublicIpAddress' --output text 2>/dev/null || echo "")
+            fi
+        fi
+    fi
+    
+    # Method 5: Try external service as last resort
+    if [ -z "$ACTUAL_IP" ] || ! echo "$ACTUAL_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+        echo "   Trying external service..."
+        ACTUAL_IP=$(curl -s --max-time 5 https://checkip.amazonaws.com 2>/dev/null | tr -d '\n' || echo "")
+        # Validate it's a real IP
+        if [ -n "$ACTUAL_IP" ] && ! echo "$ACTUAL_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+            ACTUAL_IP=""
+        fi
+    fi
+    
+    # If we found an IP, update .env and rebuild frontend
     if [ -n "$ACTUAL_IP" ] && echo "$ACTUAL_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
         EC2_IP=$ACTUAL_IP
         echo "   ✅ Found IP: $EC2_IP"
         echo "   Updating .env file..."
-        sed -i "s|VITE_API_BASE_URL=http://YOUR-EC2-IP-HERE:8080|VITE_API_BASE_URL=http://$EC2_IP:8080|" .env
-        # Rebuild frontend with correct IP
-        echo "   Rebuilding frontend with correct IP..."
-        docker_compose up --build -d frontend 2>/dev/null || true
+        
+        # Update .env file
+        sed -i "s|^VITE_API_BASE_URL=.*|VITE_API_BASE_URL=http://$EC2_IP:8080|" .env
+        
+        # Verify update
+        if grep -q "^VITE_API_BASE_URL=http://$EC2_IP:8080$" .env; then
+            echo "   ✅ .env file updated successfully"
+            
+            # Rebuild frontend with correct IP (using legacy builder)
+            echo "   🔨 Rebuilding frontend with correct IP..."
+            
+            # Temporarily disable Buildx
+            if [ -f ~/.docker/cli-plugins/docker-buildx ] && [ -x ~/.docker/cli-plugins/docker-buildx ]; then
+                mv ~/.docker/cli-plugins/docker-buildx ~/.docker/cli-plugins/docker-buildx.disabled 2>/dev/null
+            fi
+            if [ -f /usr/local/lib/docker/cli-plugins/docker-buildx ] && [ -x /usr/local/lib/docker/cli-plugins/docker-buildx ]; then
+                sudo mv /usr/local/lib/docker/cli-plugins/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx.disabled 2>/dev/null
+            fi
+            
+            # Rebuild frontend
+            export DOCKER_BUILDKIT=0
+            export COMPOSE_DOCKER_CLI_BUILD=0
+            if [ "$USE_DOCKER_COMPOSE_PLUGIN" = true ]; then
+                sudo -E DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker compose build frontend 2>&1 | tail -20
+                sudo docker compose up -d frontend
+            else
+                sudo -E DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker-compose build frontend 2>&1 | tail -20
+                sudo docker-compose up -d frontend
+            fi
+            
+            # Restore Buildx
+            if [ -f ~/.docker/cli-plugins/docker-buildx.disabled ]; then
+                mv ~/.docker/cli-plugins/docker-buildx.disabled ~/.docker/cli-plugins/docker-buildx 2>/dev/null
+            fi
+            if [ -f /usr/local/lib/docker/cli-plugins/docker-buildx.disabled ]; then
+                sudo mv /usr/local/lib/docker/cli-plugins/docker-buildx.disabled /usr/local/lib/docker/cli-plugins/docker-buildx 2>/dev/null
+            fi
+            
+            echo "   ✅ Frontend rebuilt with correct IP"
+        else
+            echo "   ⚠️  Failed to update .env file, but continuing..."
+        fi
     else
         echo "   ⚠️  Still couldn't detect IP automatically"
-        echo "   Please update .env file manually:"
+        echo ""
+        echo "   📋 Manual Update Instructions:"
         echo "   1. Get your IP from AWS Console: EC2 > Instances > Your Instance > Public IPv4"
         echo "   2. Edit .env file: nano .env"
         echo "   3. Update: VITE_API_BASE_URL=http://YOUR-ACTUAL-IP:8080"
-        echo "   4. Rebuild frontend: docker compose up --build -d frontend"
+        echo "   4. Rebuild frontend: docker compose build frontend && docker compose up -d frontend"
+        echo ""
+        echo "   Or rerun this script - it will try to detect IP again automatically."
     fi
 fi
 
