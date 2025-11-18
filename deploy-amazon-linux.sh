@@ -138,6 +138,21 @@ elif ! step_completed "docker_installed"; then
             sudo yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin 2>/dev/null
         fi
         
+        # Ensure Docker Buildx is installed and up to date
+        if ! docker buildx version &> /dev/null; then
+            echo "   Installing/updating Docker Buildx..."
+            # Install buildx plugin if not present
+            if [ ! -f ~/.docker/cli-plugins/docker-buildx ]; then
+                mkdir -p ~/.docker/cli-plugins
+                curl -L "https://github.com/docker/buildx/releases/latest/download/buildx-v$(curl -s https://api.github.com/repos/docker/buildx/releases/latest | grep -oP '"tag_name": "\K[^"]*' | sed 's/v//').linux-$(uname -m)" -o ~/.docker/cli-plugins/docker-buildx
+                chmod +x ~/.docker/cli-plugins/docker-buildx
+            fi
+            # Also install system-wide
+            sudo mkdir -p /usr/local/lib/docker/cli-plugins
+            sudo curl -L "https://github.com/docker/buildx/releases/latest/download/buildx-v$(curl -s https://api.github.com/repos/docker/buildx/releases/latest | grep -oP '"tag_name": "\K[^"]*' | sed 's/v//').linux-$(uname -m)" -o /usr/local/lib/docker/cli-plugins/docker-buildx
+            sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
+        fi
+        
         # Start and enable Docker
         sudo systemctl start docker
         sudo systemctl enable docker
@@ -176,13 +191,64 @@ else
     echo "✅ Docker installation already completed (skipping)"
 fi
 
+# Install Docker Buildx (required for docker compose build)
+echo ""
+echo "🐳 Step 3a/10: Installing/verifying Docker Buildx..."
+if ! docker buildx version &> /dev/null 2>&1 && ! sudo docker buildx version &> /dev/null 2>&1; then
+    echo "📥 Installing Docker Buildx..."
+    
+    # Try installing from package first (easiest)
+    if sudo yum install -y docker-buildx-plugin 2>/dev/null; then
+        echo "✅ Docker Buildx installed from package"
+    else
+        # Fallback: Install manually
+        echo "   Installing Docker Buildx manually..."
+        
+        # Create plugin directories
+        mkdir -p ~/.docker/cli-plugins
+        sudo mkdir -p /usr/local/lib/docker/cli-plugins
+        
+        # Download latest buildx (use a known working version)
+        ARCH=$(uname -m)
+        [ "$ARCH" = "x86_64" ] && ARCH="amd64" || ARCH="arm64"
+        
+        BUILDX_URL="https://github.com/docker/buildx/releases/latest/download/buildx-linux-${ARCH}"
+        
+        # Install for current user
+        curl -L "$BUILDX_URL" -o ~/.docker/cli-plugins/docker-buildx 2>/dev/null
+        if [ $? -eq 0 ] && [ -f ~/.docker/cli-plugins/docker-buildx ]; then
+            chmod +x ~/.docker/cli-plugins/docker-buildx
+            echo "   Installed for current user"
+        fi
+        
+        # Install system-wide (requires sudo)
+        sudo curl -L "$BUILDX_URL" -o /usr/local/lib/docker/cli-plugins/docker-buildx 2>/dev/null
+        if [ $? -eq 0 ] && [ -f /usr/local/lib/docker/cli-plugins/docker-buildx ]; then
+            sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
+            echo "   Installed system-wide"
+        fi
+    fi
+    
+    # Verify installation
+    if docker buildx version &> /dev/null 2>&1 || sudo docker buildx version &> /dev/null 2>&1; then
+        echo "✅ Docker Buildx installed successfully"
+    else
+        echo "⚠️  Docker Buildx installation had issues"
+        echo "   Trying to continue anyway - you may need to install manually:"
+        echo "   sudo yum install -y docker-buildx-plugin"
+    fi
+else
+    BUILDX_VER=$(docker buildx version 2>/dev/null || sudo docker buildx version 2>/dev/null | head -1)
+    echo "✅ Docker Buildx already installed: $BUILDX_VER"
+fi
+
 # Install Docker Compose
 echo ""
-echo "🐳 Step 3/10: Installing Docker Compose..."
+echo "🐳 Step 3b/10: Installing Docker Compose..."
 USE_DOCKER_COMPOSE_PLUGIN=false
 if docker compose version &> /dev/null 2>&1; then
     USE_DOCKER_COMPOSE_PLUGIN=true
-    echo "✅ Docker Compose plugin found: $(docker compose version)"
+    echo "✅ Docker Compose plugin found: $(docker compose version 2>&1 | head -1)"
     mark_completed "docker_compose_installed"
 elif command -v docker-compose &> /dev/null; then
     USE_DOCKER_COMPOSE_PLUGIN=false
@@ -231,12 +297,34 @@ docker_compose() {
 # Get EC2 public IP
 echo ""
 echo "📍 Step 4/10: Detecting EC2 IP address..."
-EC2_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 || echo "localhost")
-if [ "$EC2_IP" = "localhost" ]; then
-    echo "⚠️  Could not detect EC2 IP. You may need to set it manually."
-    read -p "Enter your EC2 public IP (or press Enter to use localhost): " MANUAL_IP
-    EC2_IP=${MANUAL_IP:-localhost}
+EC2_IP=$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+
+# Validate IP address format
+if [ -z "$EC2_IP" ] || [ "$EC2_IP" = "localhost" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+    echo "⚠️  Could not automatically detect EC2 IP address."
+    echo "   This might happen if you're not on EC2 or metadata service is unavailable."
+    
+    # Try alternative method - check if we can get instance ID first
+    INSTANCE_ID=$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null)
+    if [ -n "$INSTANCE_ID" ]; then
+        echo "   Detected EC2 instance ID: $INSTANCE_ID"
+        echo "   Trying to get IP from instance metadata..."
+        EC2_IP=$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+    fi
+    
+    # If still empty, ask user
+    if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+        echo ""
+        echo "   Please enter your EC2 public IP address:"
+        read -p "   EC2 Public IP: " MANUAL_IP
+        while [ -z "$MANUAL_IP" ] || ! echo "$MANUAL_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; do
+            echo "   ❌ Invalid IP address format. Please enter a valid IP (e.g., 54.123.45.67)"
+            read -p "   EC2 Public IP: " MANUAL_IP
+        done
+        EC2_IP=$MANUAL_IP
+    fi
 fi
+
 echo "✅ EC2 IP: $EC2_IP"
 
 # Clone repository
