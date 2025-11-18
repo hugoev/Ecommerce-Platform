@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.group7.ecommerce.springbackend.common.ApiResponse;
 import com.group7.ecommerce.springbackend.item.Item;
 import com.group7.ecommerce.springbackend.item.ItemRepository;
+import com.group7.ecommerce.springbackend.cart.CartRepository;
 import com.group7.ecommerce.springbackend.order.DiscountCode;
 import com.group7.ecommerce.springbackend.order.DiscountCodeRepository;
 import com.group7.ecommerce.springbackend.order.Order;
@@ -34,6 +35,7 @@ public class AdminController {
     private final DiscountCodeRepository discountCodeRepository;
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
+    private final CartRepository cartRepository;
 
     // Item Management
     @PostMapping("/items")
@@ -124,11 +126,27 @@ public class AdminController {
 
     @DeleteMapping("/users/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new RuntimeException("User not found");
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        try {
+            // Delete user's cart and cart items (cascade will handle cart items)
+            cartRepository.findByUserId(id).ifPresent(cart -> {
+                cartRepository.delete(cart);
+            });
+            
+            // Delete user's orders (cascade will handle order items)
+            List<Order> userOrders = orderRepository.findByUserIdOrderByOrderDateDesc(id);
+            if (!userOrders.isEmpty()) {
+                orderRepository.deleteAll(userOrders);
+            }
+            
+            // Now delete the user
+            userRepository.delete(user);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete user: " + e.getMessage(), e);
         }
-        userRepository.deleteById(id);
-        return ResponseEntity.ok().build();
     }
 
     // Order Management
