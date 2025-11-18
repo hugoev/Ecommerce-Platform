@@ -245,18 +245,46 @@ if [ "$BUILDX_INSTALLED" = false ]; then
         fi
     fi
     
-    # Verify installation
-    if docker buildx version &> /dev/null 2>&1 || sudo docker buildx version &> /dev/null 2>&1; then
-        BUILDX_VER=$(docker buildx version 2>&1 | head -1 || sudo docker buildx version 2>&1 | head -1)
-        echo "✅ Docker Buildx installed successfully: $BUILDX_VER"
+    # Verify installation - check if files exist first
+    BUILDX_FOUND=false
+    if [ -f ~/.docker/cli-plugins/docker-buildx ] && [ -x ~/.docker/cli-plugins/docker-buildx ]; then
+        BUILDX_FOUND=true
+        echo "   ✅ Buildx binary found in user directory"
+    fi
+    if [ -f /usr/local/lib/docker/cli-plugins/docker-buildx ] && [ -x /usr/local/lib/docker/cli-plugins/docker-buildx ]; then
+        BUILDX_FOUND=true
+        echo "   ✅ Buildx binary found system-wide"
+    fi
+    
+    # Try to use buildx - may need to use sudo or newgrp
+    if [ "$BUILDX_FOUND" = true ]; then
+        # Try without sudo first
+        if docker buildx version &> /dev/null 2>&1; then
+            BUILDX_VER=$(docker buildx version 2>&1 | head -1)
+            echo "✅ Docker Buildx installed and working: $BUILDX_VER"
+        elif sudo docker buildx version &> /dev/null 2>&1; then
+            BUILDX_VER=$(sudo docker buildx version 2>&1 | head -1)
+            echo "✅ Docker Buildx installed (requires sudo): $BUILDX_VER"
+            echo "   Note: You may need to use 'sudo docker' commands or run 'newgrp docker'"
+        else
+            # File exists but Docker can't find it - might need to set PATH or restart
+            echo "⚠️  Buildx binary installed but Docker can't find it"
+            echo "   Trying to create builder instance..."
+            if docker buildx create --name builder --use &> /dev/null 2>&1 || sudo docker buildx create --name builder --use &> /dev/null 2>&1; then
+                echo "✅ Docker Buildx is working (builder created)"
+            else
+                echo "⚠️  Buildx may need Docker restart or you may need to log out/in"
+                echo "   The binary is installed, but continuing anyway..."
+                echo "   If build fails, try: sudo systemctl restart docker"
+            fi
+        fi
     else
-        echo "❌ Docker Buildx installation failed"
+        echo "❌ Docker Buildx installation failed - binary not found"
         echo "   Please install manually:"
-        echo "   sudo yum install -y docker-buildx-plugin"
-        echo "   OR:"
         echo "   mkdir -p ~/.docker/cli-plugins"
         echo "   curl -L https://github.com/docker/buildx/releases/latest/download/buildx-linux-amd64 -o ~/.docker/cli-plugins/docker-buildx"
         echo "   chmod +x ~/.docker/cli-plugins/docker-buildx"
+        echo "   newgrp docker  # or log out and back in"
         exit 1
     fi
 fi
