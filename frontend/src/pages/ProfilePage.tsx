@@ -59,6 +59,10 @@ export function ProfilePage() {
   }, [profile]);
 
   const handleSave = async () => {
+    if (!userId) {
+      showToast('User ID not found', 'error');
+      return;
+    }
     try {
       await updateProfile(userId, formData);
       setIsEditing(false);
@@ -79,6 +83,11 @@ export function ProfilePage() {
   };
 
   const handleChangePassword = async () => {
+    if (!userId) {
+      showToast('User ID not found', 'error');
+      return;
+    }
+    
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       showToast('New passwords do not match', 'error');
       return;
