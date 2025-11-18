@@ -38,6 +38,8 @@ public class Cart {
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<CartItem> cartItems = new HashSet<>();
 
+    private String appliedDiscountCode;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

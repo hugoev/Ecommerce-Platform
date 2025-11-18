@@ -166,6 +166,34 @@ export function OrderHistoryPage() {
                   </div>
                 </div>
 
+                {/* Order Totals with Discount */}
+                <div className="pt-4 border-t">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Subtotal:</span>
+                      <span>${order.subtotal?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    {order.discountAmount && order.discountAmount > 0 && (
+                      <>
+                        <div className="flex justify-between text-sm text-green-600">
+                          <span>
+                            Discount{order.appliedDiscountCode ? ` (${order.appliedDiscountCode})` : ''}:
+                          </span>
+                          <span>-${order.discountAmount.toFixed(2)}</span>
+                        </div>
+                      </>
+                    )}
+                    <div className="flex justify-between text-sm">
+                      <span>Tax:</span>
+                      <span>${order.tax?.toFixed(2) || '0.00'}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                      <span>Total:</span>
+                      <span>${order.total.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Order Actions */}
                 <div className="flex flex-col sm:flex-row gap-2 pt-4">
                   <Button 

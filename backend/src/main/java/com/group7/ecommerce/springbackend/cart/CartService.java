@@ -255,6 +255,10 @@ public class CartService {
                 .toList();
 
         cartDto.setItems(itemDtos);
+        // Include the discount code from the Cart entity
+        if (cart.getAppliedDiscountCode() != null && !cart.getAppliedDiscountCode().isEmpty()) {
+            cartDto.setAppliedDiscountCode(cart.getAppliedDiscountCode());
+        }
         return calculateCart(cartDto);
     }
 
@@ -269,8 +273,26 @@ public class CartService {
 
     public CartDto applyDiscountCode(Long userId, String discountCode) {
         Cart cart = getCart(userId);
+        
+        // Validate discount code
+        if (discountCode != null && !discountCode.isEmpty()) {
+            Optional<DiscountCode> optionalCode = discountCodeRepository.findByCode(discountCode);
+            if (optionalCode.isEmpty()) {
+                throw new IllegalArgumentException("Invalid discount code");
+            }
+            DiscountCode code = optionalCode.get();
+            if (!code.isActive() || (code.getExpiryDate() != null && code.getExpiryDate().isBefore(OffsetDateTime.now()))) {
+                throw new IllegalArgumentException("Discount code is not valid or has expired");
+            }
+        }
+        
+        // Persist the discount code to the Cart entity
+        cart.setAppliedDiscountCode(discountCode);
+        cart.setUpdatedAt(LocalDateTime.now());
+        cartRepository.save(cart);
+        
+        // Convert to DTO and calculate totals
         CartDto cartDto = convertToDto(cart);
-        cartDto.setAppliedDiscountCode(discountCode);
         return calculateCart(cartDto);
     }
 
