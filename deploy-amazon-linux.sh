@@ -194,7 +194,23 @@ fi
 # Install Docker Buildx (required for docker compose build)
 echo ""
 echo "🐳 Step 3a/10: Installing/verifying Docker Buildx..."
-if ! docker buildx version &> /dev/null 2>&1 && ! sudo docker buildx version &> /dev/null 2>&1; then
+BUILDX_INSTALLED=false
+if docker buildx version &> /dev/null 2>&1; then
+    BUILDX_VER=$(docker buildx version 2>&1 | head -1)
+    # Check if version is >= 0.17
+    if echo "$BUILDX_VER" | grep -qE "v0\.(1[7-9]|[2-9][0-9])|v[1-9]"; then
+        BUILDX_INSTALLED=true
+        echo "✅ Docker Buildx already installed: $BUILDX_VER"
+    fi
+elif sudo docker buildx version &> /dev/null 2>&1; then
+    BUILDX_VER=$(sudo docker buildx version 2>&1 | head -1)
+    if echo "$BUILDX_VER" | grep -qE "v0\.(1[7-9]|[2-9][0-9])|v[1-9]"; then
+        BUILDX_INSTALLED=true
+        echo "✅ Docker Buildx already installed: $BUILDX_VER"
+    fi
+fi
+
+if [ "$BUILDX_INSTALLED" = false ]; then
     echo "📥 Installing Docker Buildx..."
     
     # Try installing from package first (easiest)
@@ -231,15 +247,18 @@ if ! docker buildx version &> /dev/null 2>&1 && ! sudo docker buildx version &> 
     
     # Verify installation
     if docker buildx version &> /dev/null 2>&1 || sudo docker buildx version &> /dev/null 2>&1; then
-        echo "✅ Docker Buildx installed successfully"
+        BUILDX_VER=$(docker buildx version 2>&1 | head -1 || sudo docker buildx version 2>&1 | head -1)
+        echo "✅ Docker Buildx installed successfully: $BUILDX_VER"
     else
-        echo "⚠️  Docker Buildx installation had issues"
-        echo "   Trying to continue anyway - you may need to install manually:"
+        echo "❌ Docker Buildx installation failed"
+        echo "   Please install manually:"
         echo "   sudo yum install -y docker-buildx-plugin"
+        echo "   OR:"
+        echo "   mkdir -p ~/.docker/cli-plugins"
+        echo "   curl -L https://github.com/docker/buildx/releases/latest/download/buildx-linux-amd64 -o ~/.docker/cli-plugins/docker-buildx"
+        echo "   chmod +x ~/.docker/cli-plugins/docker-buildx"
+        exit 1
     fi
-else
-    BUILDX_VER=$(docker buildx version 2>/dev/null || sudo docker buildx version 2>/dev/null | head -1)
-    echo "✅ Docker Buildx already installed: $BUILDX_VER"
 fi
 
 # Install Docker Compose
@@ -312,17 +331,43 @@ if [ -z "$EC2_IP" ] || [ "$EC2_IP" = "localhost" ] || ! echo "$EC2_IP" | grep -q
         EC2_IP=$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
     fi
     
-    # If still empty, ask user
+    # If still empty, ask user (but only if we're in an interactive shell)
     if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
-        echo ""
-        echo "   Please enter your EC2 public IP address:"
-        read -p "   EC2 Public IP: " MANUAL_IP
-        while [ -z "$MANUAL_IP" ] || ! echo "$MANUAL_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; do
-            echo "   ❌ Invalid IP address format. Please enter a valid IP (e.g., 54.123.45.67)"
+        if [ -t 0 ]; then
+            # Interactive shell - prompt user
+            echo ""
+            echo "   Please enter your EC2 public IP address:"
             read -p "   EC2 Public IP: " MANUAL_IP
-        done
-        EC2_IP=$MANUAL_IP
+            while [ -z "$MANUAL_IP" ] || ! echo "$MANUAL_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; do
+                echo "   ❌ Invalid IP address format. Please enter a valid IP (e.g., 54.123.45.67)"
+                read -p "   EC2 Public IP: " MANUAL_IP
+            done
+            EC2_IP=$MANUAL_IP
+        else
+            # Non-interactive (piped script) - try to get from AWS CLI or fail
+            echo ""
+            echo "   ⚠️  Non-interactive mode detected. Trying alternative methods..."
+            # Try AWS CLI if available
+            if command -v aws &> /dev/null; then
+                EC2_IP=$(aws ec2 describe-instances --instance-ids $(curl -s http://169.254.169.254/latest/meta-data/instance-id) --query 'Reservations[0].Instances[0].PublicIpAddress' --output text 2>/dev/null || echo "")
+            fi
+            
+            # If still empty, fail with instructions
+            if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+                echo "   ❌ Could not detect EC2 IP address automatically."
+                echo "   Please run the script interactively or set EC2_IP environment variable:"
+                echo "   EC2_IP=your-ip-here bash deploy-amazon-linux.sh"
+                echo "   OR find your IP in AWS Console: EC2 > Instances > Your Instance > Public IPv4 address"
+                exit 1
+            fi
+        fi
     fi
+fi
+
+# Final validation - don't proceed with empty IP
+if [ -z "$EC2_IP" ] || ! echo "$EC2_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+    echo "❌ Invalid or empty EC2 IP address. Cannot proceed."
+    exit 1
 fi
 
 echo "✅ EC2 IP: $EC2_IP"
