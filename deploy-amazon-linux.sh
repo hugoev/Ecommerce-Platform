@@ -770,6 +770,123 @@ else
     echo "✅ Build succeeded with legacy builder"
 fi
 
+# Update EC2 IP in .env if it was a placeholder and we can now detect it
+echo ""
+echo "🔍 Step 9b/10: Verifying and updating EC2 IP in .env file..."
+if [ -f ".env" ]; then
+    CURRENT_ENV_IP=$(grep "^VITE_API_BASE_URL=" .env 2>/dev/null | cut -d'=' -f2 | sed 's|http://||' | sed 's|:8080||' || echo "")
+    
+    # Check if current IP is a placeholder
+    if [ "$CURRENT_ENV_IP" = "YOUR-EC2-IP-HERE" ] || [ -z "$CURRENT_ENV_IP" ]; then
+        echo "   Current .env has placeholder IP, attempting to detect real IP..."
+        
+        # Try to detect IP again (maybe it's available now)
+        DETECTED_IP=""
+        DETECTED_IP=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+        
+        # Validate detected IP
+        if [ -n "$DETECTED_IP" ] && echo "$DETECTED_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+            echo "   ✅ Detected EC2 IP: $DETECTED_IP"
+            echo "   Updating .env file with detected IP..."
+            
+            # Update .env file
+            sed -i "s|^VITE_API_BASE_URL=.*|VITE_API_BASE_URL=http://$DETECTED_IP:8080|" .env
+            
+            # Verify update
+            if grep -q "^VITE_API_BASE_URL=http://$DETECTED_IP:8080$" .env; then
+                echo "   ✅ .env file updated successfully"
+                echo "   VITE_API_BASE_URL=http://$DETECTED_IP:8080"
+                
+                # Rebuild frontend since VITE_API_BASE_URL is a build-time variable
+                echo "   🔨 Rebuilding frontend with correct IP..."
+                
+                # Temporarily disable Buildx again for rebuild
+                if [ -f ~/.docker/cli-plugins/docker-buildx ] && [ -x ~/.docker/cli-plugins/docker-buildx ]; then
+                    mv ~/.docker/cli-plugins/docker-buildx ~/.docker/cli-plugins/docker-buildx.disabled 2>/dev/null
+                fi
+                if [ -f /usr/local/lib/docker/cli-plugins/docker-buildx ] && [ -x /usr/local/lib/docker/cli-plugins/docker-buildx ]; then
+                    sudo mv /usr/local/lib/docker/cli-plugins/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx.disabled 2>/dev/null
+                fi
+                
+                # Rebuild frontend only
+                export DOCKER_BUILDKIT=0
+                export COMPOSE_DOCKER_CLI_BUILD=0
+                if [ "$USE_DOCKER_COMPOSE_PLUGIN" = true ]; then
+                    sudo -E DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker compose build frontend 2>&1 | tail -20
+                    sudo docker compose up -d frontend
+                else
+                    sudo -E DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker-compose build frontend 2>&1 | tail -20
+                    sudo docker-compose up -d frontend
+                fi
+                
+                # Restore Buildx
+                if [ -f ~/.docker/cli-plugins/docker-buildx.disabled ]; then
+                    mv ~/.docker/cli-plugins/docker-buildx.disabled ~/.docker/cli-plugins/docker-buildx 2>/dev/null
+                fi
+                if [ -f /usr/local/lib/docker/cli-plugins/docker-buildx.disabled ]; then
+                    sudo mv /usr/local/lib/docker/cli-plugins/docker-buildx.disabled /usr/local/lib/docker/cli-plugins/docker-buildx 2>/dev/null
+                fi
+                
+                echo "   ✅ Frontend rebuilt with correct IP"
+            else
+                echo "   ⚠️  Failed to update .env file, but continuing..."
+            fi
+        else
+            echo "   ⚠️  Could not detect EC2 IP automatically"
+            echo "   Current .env has placeholder: YOUR-EC2-IP-HERE"
+            echo "   You can manually update .env with: sed -i 's|YOUR-EC2-IP-HERE|YOUR-ACTUAL-IP|' .env"
+            echo "   Then rebuild frontend: docker compose build frontend && docker compose up -d frontend"
+        fi
+    else
+        # Check if current IP is valid
+        if echo "$CURRENT_ENV_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+            echo "   ✅ .env already has valid IP: $CURRENT_ENV_IP"
+        else
+            echo "   ⚠️  .env has invalid IP format: $CURRENT_ENV_IP"
+            echo "   Attempting to detect and update..."
+            
+            # Try to detect IP
+            DETECTED_IP=$(curl -s --max-time 10 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+            
+            if [ -n "$DETECTED_IP" ] && echo "$DETECTED_IP" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+                echo "   ✅ Detected EC2 IP: $DETECTED_IP"
+                sed -i "s|^VITE_API_BASE_URL=.*|VITE_API_BASE_URL=http://$DETECTED_IP:8080|" .env
+                echo "   ✅ .env file updated"
+                
+                # Rebuild frontend
+                echo "   🔨 Rebuilding frontend with correct IP..."
+                if [ -f ~/.docker/cli-plugins/docker-buildx ] && [ -x ~/.docker/cli-plugins/docker-buildx ]; then
+                    mv ~/.docker/cli-plugins/docker-buildx ~/.docker/cli-plugins/docker-buildx.disabled 2>/dev/null
+                fi
+                if [ -f /usr/local/lib/docker/cli-plugins/docker-buildx ] && [ -x /usr/local/lib/docker/cli-plugins/docker-buildx ]; then
+                    sudo mv /usr/local/lib/docker/cli-plugins/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx.disabled 2>/dev/null
+                fi
+                
+                export DOCKER_BUILDKIT=0
+                export COMPOSE_DOCKER_CLI_BUILD=0
+                if [ "$USE_DOCKER_COMPOSE_PLUGIN" = true ]; then
+                    sudo -E DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker compose build frontend 2>&1 | tail -20
+                    sudo docker compose up -d frontend
+                else
+                    sudo -E DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker-compose build frontend 2>&1 | tail -20
+                    sudo docker-compose up -d frontend
+                fi
+                
+                if [ -f ~/.docker/cli-plugins/docker-buildx.disabled ]; then
+                    mv ~/.docker/cli-plugins/docker-buildx.disabled ~/.docker/cli-plugins/docker-buildx 2>/dev/null
+                fi
+                if [ -f /usr/local/lib/docker/cli-plugins/docker-buildx.disabled ]; then
+                    sudo mv /usr/local/lib/docker/cli-plugins/docker-buildx.disabled /usr/local/lib/docker/cli-plugins/docker-buildx 2>/dev/null
+                fi
+                
+                echo "   ✅ Frontend rebuilt"
+            fi
+        fi
+    fi
+else
+    echo "   ⚠️  .env file not found, skipping IP update"
+fi
+
 # Wait for services
 echo ""
 echo "⏳ Step 10/10: Waiting for services to be ready..."
