@@ -52,3 +52,12 @@ backend/data/*.trace.db
 *.key
 *.p12
 *.jks
+
+### macOS ###
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
