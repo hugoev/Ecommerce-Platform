@@ -16,6 +16,16 @@ fi
 # Use sudo for Docker on EC2
 DOCKER_CMD="sudo docker"
 
+# Detect which compose command to use
+if sudo docker compose version > /dev/null 2>&1; then
+    COMPOSE_CMD="sudo docker compose"
+elif sudo docker-compose version > /dev/null 2>&1; then
+    COMPOSE_CMD="sudo docker-compose"
+else
+    echo "❌ Error: docker compose or docker-compose not found"
+    exit 1
+fi
+
 # Load database credentials from .env
 if [ -f ".env" ]; then
     export $(grep -E '^POSTGRES_DB=|^POSTGRES_USER=' .env | xargs)
@@ -25,10 +35,10 @@ DB_NAME="${POSTGRES_DB:-ecommerce}"
 DB_USER="${POSTGRES_USER:-ecommerce_user}"
 
 echo "📦 Stopping backend..."
-$DOCKER_CMD compose stop backend
+$COMPOSE_CMD stop backend
 
 echo "🗑️  Clearing database..."
-$DOCKER_CMD compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" <<EOF
+$COMPOSE_CMD exec -T db psql -U "$DB_USER" -d "$DB_NAME" <<EOF
 DROP TABLE IF EXISTS order_items CASCADE;
 DROP TABLE IF EXISTS orders CASCADE;
 DROP TABLE IF EXISTS cart_items CASCADE;
@@ -41,19 +51,19 @@ DROP TABLE IF EXISTS flyway_schema_history CASCADE;
 EOF
 
 echo "🔄 Restarting backend (will run migrations and seed data)..."
-$DOCKER_CMD compose up -d backend
+$COMPOSE_CMD up -d backend
 
 echo "⏳ Waiting for data to be seeded (30-60 seconds)..."
 sleep 30
 
 # Wait for seeding to complete
 for i in {1..30}; do
-    if $DOCKER_CMD compose logs backend 2>&1 | grep -q "✅ Seeded.*items"; then
+    if $COMPOSE_CMD logs backend 2>&1 | grep -q "✅ Seeded.*items"; then
         echo "✅ Database refreshed successfully!"
-        $DOCKER_CMD compose logs backend 2>&1 | grep "✅ Seeded" | tail -5
+        $COMPOSE_CMD logs backend 2>&1 | grep "✅ Seeded" | tail -5
         exit 0
     fi
     sleep 2
 done
 
-echo "✅ Backend restarted. Check logs with: sudo docker compose logs backend"
+echo "✅ Backend restarted. Check logs with: $COMPOSE_CMD logs backend"
