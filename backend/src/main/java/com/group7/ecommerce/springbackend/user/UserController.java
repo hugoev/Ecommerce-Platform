@@ -106,7 +106,8 @@ public class UserController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         } catch (NoSuchElementException e) {
-            return ResponseEntity.notFound().body(ApiResponse.error("User not found"));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error("User not found"));
         } catch (Exception e) {
             // Log the exception for debugging
             e.printStackTrace();
