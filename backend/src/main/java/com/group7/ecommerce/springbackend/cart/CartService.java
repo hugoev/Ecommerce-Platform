@@ -145,6 +145,7 @@ public class CartService {
                 .orElseThrow(() -> new NoSuchElementException("Cart not found"));
 
         cartItemRepository.deleteByCart(cart);
+        cart.setAppliedDiscountCode(null); // Clear the discount code when clearing cart
         cart.setUpdatedAt(LocalDateTime.now());
         cartRepository.save(cart);
     }
