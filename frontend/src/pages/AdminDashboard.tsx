@@ -522,9 +522,8 @@ export function AdminDashboard() {
 
   const handleDeleteUser = async (userId: number) => {
     try {
-      await deleteUser(userId);
+      await deleteUser(userId); // This already calls fetchUsers() internally
       showToast('User deleted successfully', 'success');
-      await fetchUsers();
     } catch (error) {
       console.error('Failed to delete user:', error);
       showToast(`Failed to delete user: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
