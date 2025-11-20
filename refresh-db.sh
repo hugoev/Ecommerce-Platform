@@ -14,24 +14,31 @@ if [ ! -f "docker-compose.yml" ]; then
     exit 1
 fi
 
-# Check if Docker is running
+# Check if Docker is running (try with sudo if needed)
+DOCKER_CMD="docker"
 if ! docker info > /dev/null 2>&1; then
-    echo "❌ Error: Docker is not running. Please start Docker and try again."
-    exit 1
+    if sudo docker info > /dev/null 2>&1; then
+        DOCKER_CMD="sudo docker"
+        echo "ℹ️  Using sudo for Docker commands"
+    else
+        echo "❌ Error: Docker is not running. Please start Docker and try again."
+        echo "   Try: sudo systemctl start docker"
+        exit 1
+    fi
 fi
 
 # Check if containers are running
-if ! docker ps | grep -q "ecommerce-db\|ecommerce-backend"; then
+if ! $DOCKER_CMD ps | grep -q "ecommerce-db\|ecommerce-backend"; then
     echo "⚠️  Warning: Database or backend containers are not running."
     echo "   Starting services..."
-    docker compose up -d db
+    $DOCKER_CMD compose up -d db
     sleep 5
-    docker compose up -d backend
+    $DOCKER_CMD compose up -d backend
     sleep 10
 fi
 
 echo "📦 Step 1/4: Stopping backend service..."
-docker compose stop backend
+$DOCKER_CMD compose stop backend
 
 echo "🗑️  Step 2/4: Clearing all data from database..."
 
@@ -47,7 +54,7 @@ DB_USER="${POSTGRES_USER:-ecommerce_user}"
 echo "   Using database: $DB_NAME, user: $DB_USER"
 
 # Connect to database and drop all tables (this will be recreated by Flyway migrations)
-docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" <<EOF
+$DOCKER_CMD compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" <<EOF
 -- Disable foreign key checks temporarily
 SET session_replication_role = 'replica';
 
@@ -72,7 +79,7 @@ EOF
 echo "✅ Database cleared successfully"
 
 echo "🔄 Step 3/4: Restarting backend service (will run migrations and seed data)..."
-docker compose up -d backend
+$DOCKER_CMD compose up -d backend
 
 echo "⏳ Step 4/4: Waiting for backend to initialize and seed data..."
 echo "   This may take 30-60 seconds..."
@@ -81,8 +88,8 @@ echo "   This may take 30-60 seconds..."
 MAX_WAIT=120
 WAIT_COUNT=0
 while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
-    if docker compose logs backend 2>&1 | grep -q "✅ Seeded.*items\|Started SpringBackendApplication"; then
-        if docker compose logs backend 2>&1 | grep -q "✅ Seeded.*items"; then
+    if $DOCKER_CMD compose logs backend 2>&1 | grep -q "✅ Seeded.*items\|Started SpringBackendApplication"; then
+        if $DOCKER_CMD compose logs backend 2>&1 | grep -q "✅ Seeded.*items"; then
             echo "✅ Backend started and data seeded successfully!"
             break
         fi
@@ -96,15 +103,15 @@ echo ""
 echo ""
 
 # Check if seeding was successful
-if docker compose logs backend 2>&1 | grep -q "✅ Seeded.*items"; then
+if $DOCKER_CMD compose logs backend 2>&1 | grep -q "✅ Seeded.*items"; then
     echo "✅ Database refresh completed successfully!"
     echo ""
     echo "📊 Seeded data:"
-    docker compose logs backend 2>&1 | grep "✅ Seeded" | tail -5
+    $DOCKER_CMD compose logs backend 2>&1 | grep "✅ Seeded" | tail -5
     echo ""
     echo "🌐 Your application is ready with fresh demo data!"
 else
     echo "⚠️  Warning: Backend may still be starting. Check logs with:"
-    echo "   docker compose logs backend"
+    echo "   $DOCKER_CMD compose logs backend"
 fi
 
