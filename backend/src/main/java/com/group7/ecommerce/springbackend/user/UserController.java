@@ -106,7 +106,12 @@ public class UserController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         } catch (NoSuchElementException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.notFound().body(ApiResponse.error("User not found"));
+        } catch (Exception e) {
+            // Log the exception for debugging
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("An error occurred while changing password: " + e.getMessage()));
         }
     }
 

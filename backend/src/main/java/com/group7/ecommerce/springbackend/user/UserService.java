@@ -85,8 +85,21 @@ public class UserService implements UserDetailsService {
             throw new IllegalArgumentException("Current password is incorrect");
         }
 
-        user.setPassword(passwordEncoder.encode(newPassword));
+        // Encode and set the new password
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        user.setPassword(encodedPassword);
+        
+        // Save and flush to ensure it's committed to the database
         userRepository.save(user);
+        userRepository.flush();
+        
+        // Verify the password was saved correctly by attempting to match it
+        User savedUser = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalStateException("User not found after password change"));
+        
+        if (!passwordEncoder.matches(newPassword, savedUser.getPassword())) {
+            throw new IllegalStateException("Password was not saved correctly. Please try again.");
+        }
     }
 
     public boolean isAdmin(Long userId) {

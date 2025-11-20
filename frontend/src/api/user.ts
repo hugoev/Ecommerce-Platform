@@ -91,13 +91,28 @@ const apiService = {
         message: response.statusText,
         error: response.statusText 
       }));
-      // Extract validation error messages if present
+      
+      // Handle validation errors from GlobalExceptionHandler
+      if (errorData.fieldErrors && typeof errorData.fieldErrors === 'object') {
+        const fieldErrors = Object.values(errorData.fieldErrors) as string[];
+        const validationErrors = fieldErrors.join(', ');
+        throw new Error(validationErrors || errorData.message || 'Validation failed');
+      }
+      
+      // Handle ApiResponse format errors
+      if (errorData.data && errorData.data.message) {
+        throw new Error(errorData.data.message);
+      }
+      
+      // Extract validation error messages if present (alternative format)
       const errorMessage = errorData.message || errorData.error || 'An unknown error occurred';
+      
       // If it's a validation error with details, try to extract the specific field error
       if (errorData.errors && Array.isArray(errorData.errors)) {
         const validationErrors = errorData.errors.map((err: any) => err.defaultMessage || err.message).join(', ');
         throw new Error(validationErrors || errorMessage);
       }
+      
       throw new Error(errorMessage);
     }
 
