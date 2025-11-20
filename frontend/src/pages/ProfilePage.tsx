@@ -39,7 +39,7 @@ export function ProfilePage() {
 
   useEffect(() => {
     if (isAuthenticated && userId) {
-      fetchProfile(userId);
+    fetchProfile(userId);
       fetchOrders(userId);
     } else if (!isAuthenticated) {
       // Redirect to login if not authenticated
@@ -82,14 +82,48 @@ export function ProfilePage() {
     }
   };
 
+  const validatePassword = (password: string): string | null => {
+    if (password.length < 8) {
+      return 'Password must be at least 8 characters long';
+    }
+    if (!/[a-z]/.test(password)) {
+      return 'Password must contain at least one lowercase letter';
+    }
+    if (!/[A-Z]/.test(password)) {
+      return 'Password must contain at least one uppercase letter';
+    }
+    if (!/\d/.test(password)) {
+      return 'Password must contain at least one digit';
+    }
+    return null;
+  };
+
   const handleChangePassword = async () => {
     if (!userId) {
       showToast('User ID not found', 'error');
       return;
     }
+
+    // Validate current password is provided
+    if (!passwordData.currentPassword) {
+      showToast('Please enter your current password', 'error');
+      return;
+    }
+
+    // Validate new password requirements
+    const passwordError = validatePassword(passwordData.newPassword);
+    if (passwordError) {
+      showToast(passwordError, 'error');
+      return;
+    }
     
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       showToast('New passwords do not match', 'error');
+      return;
+    }
+
+    if (passwordData.currentPassword === passwordData.newPassword) {
+      showToast('New password must be different from current password', 'error');
       return;
     }
 
@@ -105,9 +139,16 @@ export function ProfilePage() {
         newPassword: '',
         confirmPassword: '',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to change password:', error);
-      showToast('Failed to change password. Please check your current password.', 'error');
+      // Try to extract a more specific error message
+      let errorMessage = 'Failed to change password. Please check your current password.';
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      showToast(errorMessage, 'error');
     } finally {
       setIsChangingPassword(false);
     }
@@ -256,7 +297,7 @@ export function ProfilePage() {
                             return 'N/A';
                           }
                           return date.toLocaleDateString('en-US', { 
-                            year: 'numeric', 
+                    year: 'numeric', 
                             month: 'short',
                             day: 'numeric'
                           });
@@ -287,29 +328,43 @@ export function ProfilePage() {
               <div className="space-y-3 pt-4 border-t">
                 <h4 className="font-medium">Change Password</h4>
                 <div className="space-y-2">
-                  <Input
-                    type="password"
-                    placeholder="Current password"
-                    value={passwordData.currentPassword}
-                    onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
-                  />
-                  <Input
-                    type="password"
-                    placeholder="New password"
-                    value={passwordData.newPassword}
-                    onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
-                  />
-                  <Input
-                    type="password"
-                    placeholder="Confirm new password"
-                    value={passwordData.confirmPassword}
-                    onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
-                  />
+                  <div className="space-y-1">
+                    <Input
+                      type="password"
+                      placeholder="Current password"
+                      value={passwordData.currentPassword}
+                      onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Input
+                      type="password"
+                      placeholder="New password"
+                      value={passwordData.newPassword}
+                      onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                    />
+                    {passwordData.newPassword && (
+                      <p className="text-xs text-text-muted">
+                        Must be 8+ characters with uppercase, lowercase, and a number
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <Input
+                      type="password"
+                      placeholder="Confirm new password"
+                      value={passwordData.confirmPassword}
+                      onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                    />
+                    {passwordData.confirmPassword && passwordData.newPassword !== passwordData.confirmPassword && (
+                      <p className="text-xs text-red-500">Passwords do not match</p>
+                    )}
+                  </div>
                   <Button 
                     variant="outline" 
                     className="w-full"
                     onClick={handleChangePassword}
-                    disabled={isChangingPassword}
+                    disabled={isChangingPassword || !passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword}
                   >
                     {isChangingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : "Change Password"}
                   </Button>

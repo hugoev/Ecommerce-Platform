@@ -87,8 +87,18 @@ const apiService = {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: response.statusText }));
-      throw new Error(errorData.message || 'An unknown error occurred');
+      const errorData = await response.json().catch(() => ({ 
+        message: response.statusText,
+        error: response.statusText 
+      }));
+      // Extract validation error messages if present
+      const errorMessage = errorData.message || errorData.error || 'An unknown error occurred';
+      // If it's a validation error with details, try to extract the specific field error
+      if (errorData.errors && Array.isArray(errorData.errors)) {
+        const validationErrors = errorData.errors.map((err: any) => err.defaultMessage || err.message).join(', ');
+        throw new Error(validationErrors || errorMessage);
+      }
+      throw new Error(errorMessage);
     }
 
     return response.json();

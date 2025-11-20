@@ -26,7 +26,13 @@ public class SecurityConfig {
                 .and()
                 .authorizeHttpRequests(authz -> authz
                         // Public endpoints
-                        .requestMatchers("/api/auth/**", "/images/**").permitAll()
+                        .requestMatchers("/api/auth/register", "/api/auth/login", "/images/**").permitAll()
+                        // Password change requires authentication (must come before general /api/auth/**)
+                        .requestMatchers("/api/auth/change-password/**").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+                        // Profile endpoints require authentication
+                        .requestMatchers("/api/auth/profile/**").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+                        // Other auth endpoints are public
+                        .requestMatchers("/api/auth/**").permitAll()
                         // Image upload requires admin authentication (must come before general /api/items/**)
                         .requestMatchers("/api/items/upload-image").hasAuthority("ROLE_ADMIN")
                         // Public item endpoints (GET requests)
